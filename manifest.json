@@ -1,0 +1,49 @@
+{
+  "name": "PassHub.net",
+  "version": "1.3.0",
+  "description": "PassHub.net password manager",
+  "author": "WWPass",
+  "homepage_url": "https://wwpass.com",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting",
+    "webNavigation",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*/",
+    "http://localhost:8080/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:8080/*",
+      "https://*.passhub.net/*",
+      "https://*.passhub.ch/*",
+      "https://*.passhub.us/*",
+      "https://*.passhub.eu/*",
+      "https://*.jetinf.us/*"
+    ]
+  },
+  "action": {
+    "default_icon": {
+      "16": "images/passhub16.png",
+      "32": "images/passhub32.png",
+      "48": "images/passhub48.png",
+      "64": "images/passhub64.png",
+      "128": "images/passhub128.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "images/passhub16.png",
+    "32": "images/passhub32.png",
+    "48": "images/passhub48.png",
+    "64": "images/passhub64.png",
+    "128": "images/passhub128.png"
+  },
+  "manifest_version": 3
+}
