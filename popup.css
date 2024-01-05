@@ -1,0 +1,138 @@
+@font-face {
+  font-family: OpenSans;
+  src: url('fonts/OpenSans-Regular.ttf');
+}
+
+@font-face {
+  font-family: OpenSansBold;
+  src: url('fonts/OpenSans-Bold.ttf');
+}
+
+@font-face {
+  font-family: OpenSansExtraBold;
+  src: url('fonts/OpenSans-ExtraBold.ttf');
+}
+
+body {
+  margin: 0;
+}
+
+.wrapper {
+  width: 399px;
+  padding: 0;
+  margin: 0;
+  border: black solid 1px;
+}
+
+.header {
+  width: 400px;
+  height: 80px;
+  background-image: url('images/ext-bkg.jpg');
+  background-size: 400px 80px;
+}
+
+.header>div {
+  margin: 0 40px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.found-entry {
+  font-family: OpenSans;
+  background-color: rgba(27, 27, 38, 0.05);
+  height: 56px;
+  margin-bottom: 2px;
+  padding-top: 5px;
+  padding-left: 20px;
+}
+
+.found-entry:hover {
+  background-color: rgba(27, 27, 38, 0.15);
+}
+
+.found-title {
+  font-family: OpenSans;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 18px;
+  line-height: 25px;
+  margin-bottom: 4px;
+  color: #1b1b26;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.found-safe {
+  font-family: OpenSans;
+  font-style: italic;
+  font-weight: normal;
+  font-size: 14px;
+  line-height: 19px;
+  color: #1b1b26;
+}
+
+.found-username {
+  font-family: OpenSans;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 14px;
+  line-height: 19px;
+  color: #8d8d94;
+}
+
+.found-footer {
+  display: flex;
+  justify-content: space-between;
+}
+
+.icon-div {
+  width: 20px;
+  height: 20px;
+}
+
+.close-popup {
+  width: 20px;
+  height: 20px;
+  background-image: url('images/close.svg');
+  background-size: 20px 20px;
+}
+
+.close-popup:hover {
+  background-image: url('images/close-hover.svg');
+  background-size: 20px 20px;
+}
+
+.help {
+  width: 20px;
+  height: 20px;
+  margin-right: 20px;
+  background-image: url('images/help.svg');
+  background-size: 20px 20px;
+}
+
+.help:hover {
+  background-image: url('images/help-hover.svg');
+  background-size: 20px 20px;
+}
+
+.settings {
+  width: 20px;
+  height: 20px;
+  margin-right: 20px;
+  background-image: url('images/settings.svg');
+  background-size: 20px 20px;
+}
+
+.settings:hover {
+  background-image: url('images/settings-hover.svg');
+  background-size: 20px 20px;
+}
+
+#passhub-instance {
+  margin: 20px 0 0 40px;
+  font-size: 24px;
+  opacity: 0.7;
+  color: black;
+  display: none;
+}
