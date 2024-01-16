@@ -105,48 +105,85 @@ chrome.runtime.onConnectExternal.addListener((port) => {
 
 
 // messages sent by popup, retransmitted to passhub window via permanent external connection (payment page/not a payment page)
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  consoleLog("bg got message");
-  consoleLog(message);
 
+function fallBackToConnection(message) {
+  try {
+    if (!connected) {
+      chrome.runtime.sendMessage({ id: 'not connected' })
+        .then(response => console.log(response))
+    } else {
+      // sendResponseFunction({ id: 'wait' });
+      passhubPort.postMessage(message);
+    }
+  }
+  catch (err) {
+    consoleLog('catch 73');
+    consoleLog(err);
+    consoleLog('passhubPort');
+    consoleLog(passhubPort);
+  }
+}
+
+chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
+  consoleLog("bg got message");
+  consoleLog(popupMessage);
+
+  sendResponse({ status: 'wait' });
 
   chrome.storage.session.get("passhub")
     .then(passhubWindow => {
       console.log("session storage returns");
       console.log(passhubWindow);
-      chrome.tabs.sendMessage(passhubWindow.passhub.tab.id, { id: "request to send", origin: passhubWindow.passhub.origin })
-        .then(response => {
-          console.log('response to rts');
-          console.log(response);
-          deferredMsg = message;
-        });
+      if (!passhubWindow.passhub) {
+        fallBackToConnection(popupMessage);
+      } else {
+        chrome.tabs.sendMessage(passhubWindow.passhub.tab.id, { id: "request to send", origin: passhubWindow.passhub.origin })
+          .then(response => {
+            console.log('response to rts');
+            console.log(response);
+            deferredMsg = popupMessage;
+          })
+          .catch(err => {
+            fallBackToConnection(popupMessage);
+          })
+
+      }
     })
-    .catch(err => {
-      console.log('catch 112 rts');
-      console.log(err);
-    })
 
 
 
-  if (!connected) {
-    sendResponse({ status: 'not connected' });
-  } else {
-    sendResponse({ status: 'wait' });
-    try {
-      passhubPort.postMessage(message);
-    } catch (err) {
-      consoleLog('catch 73');
-      consoleLog(err);
-      consoleLog('passhubPort');
-      consoleLog(passhubPort);
-    }
-  }
+
+  /*
+        return chrome.tabs.sendMessage(passhubWindow.passhub.tab.id, { id: "request to send", origin: passhubWindow.passhub.origin })
+          .then(response => {
+            console.log('response to rts');
+            console.log(response);
+            deferredMsg = message;
+            sendResponse({ status: 'wait' });
+          })
+          .catch(err => {
+            consoleLog('catch 142');
+            consoleLog(err);
+            if (!connected) {
+              sendResponse({ status: 'not connected' });
+              return;
+            } else {
+              sendResponse({ status: 'wait' });
+              return fallBackToConnection();
+            }
+          })
+      })
+      .catch(err => {
+        console.log('catch 112 rts');
+        consoleLog(err);
+      })
+      */
 })
 
 function injectionOnInstall() {
   const event = new Event("passhubExtInstalled");
   document.dispatchEvent(event);
-  consoleLog("extension installed");
+  console.log("extension installed");
 }
 
 chrome.runtime.onInstalled.addListener(() => {
