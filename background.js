@@ -125,7 +125,7 @@ function fallBackToConnection(message) {
 }
 
 chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
-  consoleLog("bg got message");
+  consoleLog("bg got (popup) message");
   consoleLog(popupMessage);
 
   sendResponse({ status: 'wait' });
@@ -141,12 +141,15 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
           .then(response => {
             console.log('response to rts');
             console.log(response);
-            deferredMsg = popupMessage;
+            if (response.farewell.includes('passhubTabScript')) {
+              deferredMsg = popupMessage;
+            } else {
+              fallBackToConnection(popupMessage);
+            }
           })
           .catch(err => {
             fallBackToConnection(popupMessage);
           })
-
       }
     })
 

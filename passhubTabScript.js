@@ -12,6 +12,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.id === 'request to send') {
         window.postMessage(message, message.origin);
     }
-    sendResponse({ farewell: "goodbye" });
+    sendResponse({ farewell: "passhubTabScript goodbye" });
 });
 
