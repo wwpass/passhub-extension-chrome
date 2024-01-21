@@ -72,7 +72,10 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
       })
   } else if ((request.id == 'advise') || (request.id == 'payment')) {
     // sent by passhub tab as a response containing data, retransmitted to popup
-    request.passhubInstance = passhubInstance;
+
+    const originUrl = new URL(sender.origin);
+
+    request.passhubInstance = originUrl.hostname;
     chrome.runtime.sendMessage(request);
     sendResponse({ farewell: `goodbye ${request.id} ${farewellCount}` });
     farewellCount++;
