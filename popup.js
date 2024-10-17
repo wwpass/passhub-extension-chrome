@@ -1,6 +1,10 @@
 // const consoleLog = console.log;
 const consoleLog = () => { };
 
+
+const windowClose = window.close;
+//const windowClose = () => { };
+
 consoleLog(logtime() + 'passhub extension popup start');
 
 function logtime() {
@@ -30,6 +34,9 @@ function gotPaymentStatus(tab, frame, response) {
 
   consoleLog(response);
   if (response.payment == "payment page") {
+    consoleLog('paymentFrame')
+    consoleLog(frame)
+
     paymentStatus = response.payment;
     paymentFrames.push(frame);
   }
@@ -91,15 +98,20 @@ function gotPaymentStatus(tab, frame, response) {
       paymentHost = paymentUrl.host;
       consoleLog(`paymentHost1 ${paymentHost}`)
 
-      for (let payFrame of paymentFrames) {
-        const url = new URL(payFrame.url);
-        const host = url.host;
-        if (host != paymentHost) {
-          paymentHost = null;
-          paymentStatus = "not a payment page";
-          break;
-        }
-      }
+      /*      
+            for (let payFrame of paymentFrames) {
+              const url = new URL(payFrame.url);
+              const host = url.host;
+              if (host != paymentHost) {
+                console.log('host witrh wrong url', host);
+      
+                paymentHost = null;
+                paymentStatus = "not a payment page";
+                break;
+              }
+            }
+      */
+
       consoleLog(`paymentHost ${paymentHost}`)
     }
 
@@ -360,7 +372,7 @@ function advItemClick(e) {
               .then(response => {
                 consoleLog('response');
                 consoleLog(response);
-                window.close();
+                windowClose();
               })
               .catch(err => {
                 consoleLog('catched 169');
@@ -380,13 +392,15 @@ function advItemClick(e) {
             id: 'loginRequest',
             username: found[row].username,
             password: found[row].password,
+            frameId: frame.frameId //debug
+
           },
           { frameId: frame.frameId }
         )
           .then(response => {
             consoleLog('response');
             consoleLog(response);
-            window.close();
+            windowClose();
           })
           .catch(err => {
             consoleLog('catched 169');
@@ -429,7 +443,7 @@ function activatePassHubTab() {
   });
 }
 
-document.querySelector('.close-popup').onclick = () => window.close();
+document.querySelector('.close-popup').onclick = () => windowClose();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   consoleLog('popup got message');
@@ -439,10 +453,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.id === "not connected") {
     const signIn = document.getElementById('sign-in');
     sendResponse({ response: 'Bye' })
-    console.log(signIn);
+    consoleLog(signIn);
     signIn.style.display = 'block';
     document.querySelector('#passhub-link').onclick = activatePassHubTab;
-    console.log(signIn.style);
+    consoleLog(signIn.style);
   }
 
   if ((request.id === "advise") || (request.id === "payment")) {

@@ -113,7 +113,7 @@ function fallBackToConnection(message) {
   try {
     if (!connected) {
       chrome.runtime.sendMessage({ id: 'not connected' })
-        .then(response => console.log(response))
+        .then(response => consoleLog(response))
     } else {
       // sendResponseFunction({ id: 'wait' });
       passhubPort.postMessage(message);
@@ -135,15 +135,15 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
 
   chrome.storage.session.get("passhub")
     .then(passhubWindow => {
-      console.log("session storage returns");
-      console.log(passhubWindow);
+      consoleLog("session storage returns");
+      consoleLog(passhubWindow);
       if (!passhubWindow.passhub) {
         fallBackToConnection(popupMessage);
       } else {
         chrome.tabs.sendMessage(passhubWindow.passhub.tab.id, { id: "request to send", origin: passhubWindow.passhub.origin })
           .then(response => {
-            console.log('response to rts');
-            console.log(response);
+            consoleLog('response to rts');
+            consoleLog(response);
             if (response.farewell.includes('passhubTabScript')) {
               deferredMsg = popupMessage;
             } else {
@@ -160,7 +160,7 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
 function injectionOnInstall() {
   const event = new Event("passhubExtInstalled");
   document.dispatchEvent(event);
-  console.log("extension installed");
+  consoleLog("extension installed");
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -176,8 +176,8 @@ chrome.runtime.onInstalled.addListener(() => {
         func: injectionOnInstall,
       })
         .catch(err => {
-          console.log('catch 107');
-          console.log(err)
+          consoleLog('catch 107');
+          consoleLog(err)
         })
     }
   });
