@@ -443,8 +443,7 @@ function activatePassHubTab() {
   });
 }
 
-//document.querySelector('.close-popup').onclick = () => windowClose();
-document.querySelector('.close-popup').onclick = windowClose;
+document.querySelector('.close-popup').onclick = () => windowClose();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   consoleLog('popup got message');
@@ -454,10 +453,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.id === "not connected") {
     const signIn = document.getElementById('sign-in');
     sendResponse({ response: 'Bye' })
-    console.log(signIn);
+    consoleLog(signIn);
     signIn.style.display = 'block';
     document.querySelector('#passhub-link').onclick = activatePassHubTab;
-    console.log(signIn.style);
+    consoleLog(signIn.style);
   }
 
   if ((request.id === "advise") || (request.id === "payment")) {

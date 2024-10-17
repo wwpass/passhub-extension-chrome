@@ -1,5 +1,5 @@
-const consoleLog = console.log;
-//const consoleLog = () => {};
+//const consoleLog = console.log;
+const consoleLog = () => { };
 
 consoleLog('passhubTabSript start');
 
