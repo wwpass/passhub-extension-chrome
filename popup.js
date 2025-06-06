@@ -70,18 +70,18 @@ function gotPaymentStatus(tab, frame, response) {
       consoleLog(`frame ${frame.frameId} ${frame.url} urllength ${frameDomains.length}`);
       if (maxLength - minLength > 1) {
         consoleLog('not same length');
-        break;
+        continue;
       }
       let same = true;
       for (let i = 0; i < minLength; i++) {
         if (frameDomains[i] != mainDomains[i]) {
           same = false;
-          consoleLog('not sameUrl');
+          consoleLog('not sameUrl: ' + frameDomains[i] + ' != ' + mainDomains[i]);
           break;
         }
       }
       if (same) {
-        consoleLog('sameUrl');
+        consoleLog('sameUrl: ' + frameDomains.join('.'));
         sameUrlFrames.push(frame);
       }
     }

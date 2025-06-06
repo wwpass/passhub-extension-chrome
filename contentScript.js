@@ -15,15 +15,15 @@ function fireEvent(el, name) {
 
 function setInputValue(input, value) {
 
-  //  fireEvent(input, 'focus');
-  //  input.click()
-  //  fireEvent(input, 'keydown');
-  //  fireEvent(input, 'keypress');
-  //  fireEvent(input, 'keyup');
-
+  fireEvent(input, 'focus');
+  fireEvent(input, 'focusin');
+  fireEvent(input, 'keydown');
   input.value = value;
   fireEvent(input, 'input');
   fireEvent(input, 'change');
+  fireEvent(input, 'keyup');
+  fireEvent(input, 'blur');
+  fireEvent(input, 'focusout');
 }
 
 let fillCounter = 0;
@@ -39,12 +39,25 @@ function initFillCredentials() {
 }
 
 function isUsernameCandidate(input) {
-  if (input.id.toLowerCase().search('search') != -1) {
+
+  if ("id" in input && input.id.toLowerCase() == "password") {
     return false;
   }
-  if (input.placeholder.toLowerCase().search('search') != -1) {
+  if ("id" in input && input.id.toLowerCase() == "captcha") {
     return false;
   }
+
+  if ("id" in input && input.id.toLowerCase().search('search') != -1) {
+    return false;
+  }
+  if ("placeholder" in input && input.placeholder.toLowerCase().search('search') != -1) {
+    return false;
+  }
+
+  if (input.getBoundingClientRect().bottom < 0) {
+    return false;
+  }
+
   return true;
 }
 
@@ -64,7 +77,7 @@ function fillCredentials(loginData = null) {
 
   fillCounter++;
 
-  if (fillCounter < 200) {
+  if (fillCounter < 100) {
     consoleLog(inputs.length);
   } else {
     clearInterval(intervalID);
@@ -108,8 +121,11 @@ function fillCredentials(loginData = null) {
   */
 
   if (!(usernameInput && passwordInput)) {
-
+    consoleLog('contentScript: looking for username & password inputs');
     for (let input of inputs) {
+      consoleLog('input');
+      consoleLog(input);
+
       if (input.offsetParent === null) {
         continue;
       }
@@ -120,19 +136,18 @@ function fillCredentials(loginData = null) {
         continue;
       }
       const itype = input.type.toLowerCase();
-      if (itype === 'text' && passwordInput == null) {
-        if (isUsernameCandidate(input)) usernameInput = input;
+      if ((passwordInput == null) || (usernameInput == null)) {
+        if ((itype == 'text') || (itype == 'email')) {
+          if (isUsernameCandidate(input)) usernameInput = input;
+        }
       }
-      if (itype === 'email' && passwordInput == null) {
-        usernameInput = input;
+
+      if ("id" in input && input.id == "password") {
+        passwordInput = input;
       }
 
       if (itype === 'password') {
         passwordInput = input;
-      }
-
-      if (!passwordInput) {
-        passwordInput = document.querySelector("#password");
       }
 
       if (usernameInput && passwordInput) {
