@@ -1,5 +1,5 @@
-// const consoleLog = console.log;
-const consoleLog = () => { };
+const consoleLog = console.log;
+// const consoleLog = () => { };
 
 
 const windowClose = window.close;
@@ -321,6 +321,11 @@ function renderAccounts(m) {
       const d = document.createElement('div');
       d.setAttribute('data-row', `${i}`);
       d.setAttribute('class', 'found-entry');
+
+      const fillSpan = document.createElement('span')
+      fillSpan.innerText = "autofill";
+      d.append(fillSpan);
+
       d.onclick = advItemClick;
 
       const titleDiv = document.createElement('div');
@@ -332,6 +337,24 @@ function renderAccounts(m) {
       safeDiv.setAttribute('class', 'found-safe');
       safeDiv.innerText = found[i].safe;
       d.appendChild(safeDiv);
+
+      if ("totp" in found[i]) {
+        const totpDiv = document.createElement('div');
+        totpDiv.setAttribute('class', 'found-totp');
+        totpDiv.innerText = found[i].totp;
+
+        const copySpan = document.createElement('span')
+        copySpan.innerText = "copy";
+        totpDiv.append(copySpan);
+        d.appendChild(totpDiv);
+        totpDiv.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          //          let t = ev.target.innerText;
+          navigator.clipboard.writeText(found[i].totp.trim()).then(() => {
+            windowClose();
+          })
+        })
+      }
 
       p.appendChild(d);
       consoleLog('22');
@@ -386,6 +409,10 @@ function advItemClick(e) {
       for (let frame of sameUrlFrames) {
         consoleLog('frame');
         consoleLog(frame);
+        if ("totp" in found[row]) {
+          navigator.clipboard.writeText(found[row].totp.trim())
+        }
+
         chrome.tabs.sendMessage(
           tabs[0].id,
           {
@@ -465,3 +492,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return;
   }
 });
+
+
+
