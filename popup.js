@@ -268,6 +268,124 @@ chrome.tabs.query({ active: true, currentWindow: true })
       })
   });
 
+
+
+const dial =
+  `<svg style="transform: rotate(90deg) scale(-1,1)" width="40" viewBox="0 0 200 200" version="1.1"
+    xmlns="http://www.w3.org/2000/svg">
+    <circle r="90" cx="100" cy="100" fill="transparent" stroke-width="20">
+    </circle>
+    <circle class="otp-dial" r="85" cx="100" cy="100" fill="transparent"  stroke-width="30";
+        stroke-dashoffset="0"></circle>
+</svg>`
+
+function setOtpDial(val) {
+  const circles = document.querySelectorAll('svg .otp-dial');
+
+  if (isNaN(val)) {
+    val = 100;
+  } else {
+    if (val < 0) { val = 0; }
+    if (val > 100) { val = 100; }
+
+
+    for (const circle of circles) {
+      const r = circle.getAttribute('r');
+      const c = Math.PI * (r * 2);
+      const pct = c - ((100 - val) / 100) * c;
+
+      circle.style.strokeDashoffset = pct;
+      circle.style.strokeDasharray = c;
+
+    }
+  }
+}
+
+setInterval(() => {
+  const d = new Date();
+  setOtpDial((d.getSeconds() % 30) * 10 / 3)
+}, 1000)
+
+
+function showCopyDialog(ev) {
+  ev.stopPropagation();
+  console.log(ev)
+}
+
+function renderFoundEntry(entryData, row) {
+
+  const foundEntry = document.createElement('div');
+  foundEntry.setAttribute('data-row', `${row}`);
+  foundEntry.setAttribute('class', 'found-entry');
+
+
+  const copyDialog = document.createElement('div');
+  copyDialog.setAttribute('class', 'copy-dialog')
+  const copyUsername = document.createElement('div');
+  copyUsername.innerHTML = '<span>copy username</span>';
+  copyDialog.append(copyUsername);
+  const copyPassword = document.createElement('div');
+  copyPassword.innerHTML = '<span>copy password</span>';
+  copyDialog.append(copyPassword);
+
+  if ("totp" in entryData) {
+    const copyTotp = document.createElement('div');
+    copyTotp.innerHTML = '<span>copy one-time code</span>';
+    copyDialog.append(copyTotp);
+  }
+  foundEntry.append(copyDialog);
+
+  const fillSpan = document.createElement('span')
+  // fillSpan.innerText = "autofill";
+  fillSpan.style.cursor = "pointer";
+
+  fillSpan.innerHTML = '<img class="tree-dots" src="images/three-dots-vertical.svg">'
+  foundEntry.append(fillSpan);
+  fillSpan.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const p = ev.target.closest('.found-entry');
+    const c = p.querySelector('.copy-dialog');
+    c.style.display = 'block';
+  })
+
+  foundEntry.onclick = advItemClick;
+
+  const titleDiv = document.createElement('div');
+  titleDiv.setAttribute('class', 'found-title');
+  titleDiv.innerText = entryData.title;
+  foundEntry.appendChild(titleDiv);
+
+  const safeDiv = document.createElement('div');
+  safeDiv.setAttribute('class', 'found-safe');
+  safeDiv.innerText = entryData.safe;
+  foundEntry.appendChild(safeDiv);
+
+  if ("totp" in entryData) {
+    const totpDiv = document.createElement('div');
+    totpDiv.setAttribute('class', 'found-totp');
+    totpDiv.innerHTML = dial;
+    totpDiv.innerHTML += '<div style="margin: 0 20px 0 10px; font-size: 14px">One-time code (TOTP)</div>';
+
+    totpDiv.innerHTML += `<div><code>${entryData.totp}</code></div> `;
+
+
+    /*
+      const copySpan = document.createElement('span')
+      copySpan.innerText = "copy";
+      totpDiv.append(copySpan);
+    */
+    foundEntry.appendChild(totpDiv);
+    totpDiv.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      //          let t = ev.target.innerText;
+      navigator.clipboard.writeText(entryData.totp.trim()).then(() => {
+        windowClose();
+      })
+    })
+  }
+  return foundEntry;
+}
+
 let found = [];
 
 function renderAccounts(m) {
@@ -313,57 +431,23 @@ function renderAccounts(m) {
     return;
   }
 
-  const p = document.querySelector('#advice');
+  const adviceListDiv = document.querySelector('#advice');
   consoleLog('renderAccount in advice');
   try {
     for (let i = 0; i < found.length; i++) {
+
+
       consoleLog('rendering ' + i + 1);
-      const d = document.createElement('div');
-      d.setAttribute('data-row', `${i}`);
-      d.setAttribute('class', 'found-entry');
+      const foundEntry = renderFoundEntry(found[i], i)
 
-      const fillSpan = document.createElement('span')
-      fillSpan.innerText = "autofill";
-      d.append(fillSpan);
-
-      d.onclick = advItemClick;
-
-      const titleDiv = document.createElement('div');
-      titleDiv.setAttribute('class', 'found-title');
-      titleDiv.innerText = found[i].title;
-      d.appendChild(titleDiv);
-
-      const safeDiv = document.createElement('div');
-      safeDiv.setAttribute('class', 'found-safe');
-      safeDiv.innerText = found[i].safe;
-      d.appendChild(safeDiv);
-
-      if ("totp" in found[i]) {
-        const totpDiv = document.createElement('div');
-        totpDiv.setAttribute('class', 'found-totp');
-        totpDiv.innerText = found[i].totp;
-
-        const copySpan = document.createElement('span')
-        copySpan.innerText = "copy";
-        totpDiv.append(copySpan);
-        d.appendChild(totpDiv);
-        totpDiv.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          //          let t = ev.target.innerText;
-          navigator.clipboard.writeText(found[i].totp.trim()).then(() => {
-            windowClose();
-          })
-        })
-      }
-
-      p.appendChild(d);
+      adviceListDiv.appendChild(foundEntry);
       consoleLog('22');
     }
   } catch (e) {
     consoleLog('catch 193');
     consoleLog(e);
   }
-  p.style.display = 'block';
+  adviceListDiv.style.display = 'block';
   consoleLog('renderAccount advise rendered');
 }
 
@@ -377,7 +461,7 @@ function advItemClick(e) {
     .then(tabs => {
 
       if (paymentStatus == "payment page") {
-        consoleLog(`paymentHost ${paymentHost}`)
+        consoleLog(`paymentHost ${paymentHost} `)
         if (paymentHost) {
           consoleLog('paymentFrames');
           consoleLog(paymentFrames);

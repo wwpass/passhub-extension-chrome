@@ -50,7 +50,7 @@ body {
 
 .found-entry {
   font-family: OpenSans;
-  background-color: rgba(27, 27, 38, 0.15);
+  background-color: rgba(27, 27, 38, 0.1);
   /* height: 56px; */
   margin-bottom: 2px;
   padding-top: 5px;
@@ -62,11 +62,19 @@ body {
 
 .found-entry>span {
   position: absolute;
-  right: 20px;
+  right: 10px;
   top: 10px;
   font-size: 14px;
   display: none;
   color: green;
+}
+
+.found-entry .copy-dialog {
+  position: absolute;
+  right: 30px;
+  top: 10px;
+  font-size: 14px;
+  /*  display: none; */
 }
 
 /*
@@ -98,18 +106,27 @@ body {
 }
 
 .found-totp {
+
+  display: flex;
+  position: relative;
+  color: #1b1b26;
+
+
   font-family: OpenSans;
   font-weight: normal;
   font-size: 18px;
   line-height: 27px;
-  color: #1b1b26;
+
+  margin: 10px 20px 10px 0;
+  /*
+  justify-content: right;
   margin-right: 20px;
   margin-top: 3px;
   border-radius: 5px;
   background: white;
   text-align: center;
   padding: 5px 0;
-  position: relative;
+*/
 }
 
 .found-totp:hover {
@@ -134,6 +151,17 @@ body {
 
 .found-entry:not(:has(.found-totp:hover)):hover>span {
   display: inline;
+}
+
+svg circle {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear;
+  stroke: #aaa;
+  /*  stroke-width: 20; */
+}
+
+svg circle.otp-dial {
+  stroke: #009F1E;
 }
 
 
