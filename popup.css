@@ -42,7 +42,7 @@ body {
     margin-top: 36px;
     height: 24px;
   */
-  margin-top: 38px;
+  margin-top: 42px;
   height: 17px;
 }
 
@@ -59,23 +59,50 @@ body {
   position: relative;
 }
 
-
-.found-entry>span {
+.found-entry .three-dots {
   position: absolute;
+  right: 0;
+  top: 0;
+  padding-left: 20px;
+  padding-right: 10px;
+  padding-top: 10px;
+  display: none;
+}
+
+.found-entry .three-dots:hover {
+  right: 5px;
+}
+
+.found-entry .three-dots:hover img {
+  height: 24px;
+}
+
+
+.copy-dialog {
+  position: absolute;
+  z-index: 10;
   right: 10px;
   top: 10px;
-  font-size: 14px;
-  display: none;
-  color: green;
+  padding: 10px 15px 10px 20px;
+  width: 200px;
+  border-radius: 5px;
+
+  font-size: 16px;
+  line-height: 32px;
+  min-width: 180px;
+  background-color: white;
+  box-shadow: 0 4px 34px #7e7e8f47;
 }
 
-.found-entry .copy-dialog {
-  position: absolute;
-  right: 30px;
-  top: 10px;
-  font-size: 14px;
-  /*  display: none; */
+.copy-dialog div {
+  cursor: pointer;
 }
+
+.copy-dialog div:hover {
+  background-color: #eee;
+}
+
+
 
 /*
 .found-entry:hover {
@@ -129,6 +156,8 @@ body {
 */
 }
 
+/*
+
 .found-totp:hover {
   color: green;
 }
@@ -138,19 +167,26 @@ body {
   right: 5px;
   display: none;
   font-size: smaller;
+  cursor: pointer;
 }
 
-.found-entry:hover .found-totp span {
+.found-entry:hover .found-totp .three-dots {
   display: inline;
 }
 
+*/
 
-.found-entry:not(:has(.found-totp:hover)):hover {
+.found-entry:not(:has(.found-value:hover)):hover {
   background-color: rgba(27, 27, 38, 0.05);
 }
 
-.found-entry:not(:has(.found-totp:hover)):hover>span {
+.found-entry:not(:has(.found-value:hover)):hover>span {
   display: inline;
+}
+
+.found-entry .totp-value:hover {
+  color: green;
+  font-size: 20px;
 }
 
 svg circle {
@@ -164,7 +200,6 @@ svg circle.otp-dial {
   stroke: #009F1E;
 }
 
-
 .found-username {
   font-family: OpenSans;
   font-style: normal;
@@ -173,6 +208,8 @@ svg circle.otp-dial {
   line-height: 19px;
   color: #8d8d94;
 }
+
+
 
 .found-footer {
   display: flex;
@@ -202,6 +239,19 @@ svg circle.otp-dial {
   margin-right: 20px;
   background-image: url('images/help.svg');
   background-size: 20px 20px;
+}
+
+.credit-card {
+  height: 24px;
+  width: 24px;
+  margin-right: 20px;
+  vertical-align: text-bottom;
+  fill: white;
+  opacity: 0.5;
+}
+
+.credit-card:hover {
+  opacity: 0.8;
 }
 
 .help:hover {

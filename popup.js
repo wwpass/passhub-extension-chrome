@@ -2,8 +2,10 @@ const consoleLog = console.log;
 // const consoleLog = () => { };
 
 
-const windowClose = window.close;
-//const windowClose = () => { };
+// const windowClose = window.close;
+const windowClose = () => {
+  console.log('xxx')
+};
 
 consoleLog(logtime() + 'passhub extension popup start');
 
@@ -268,10 +270,8 @@ chrome.tabs.query({ active: true, currentWindow: true })
       })
   });
 
-
-
 const dial =
-  `<svg style="transform: rotate(90deg) scale(-1,1)" width="40" viewBox="0 0 200 200" version="1.1"
+  `<svg style="transform: rotate(90deg) scale(-1,1)" width="24" viewBox="0 0 200 200" version="1.1"
     xmlns="http://www.w3.org/2000/svg">
     <circle r="90" cx="100" cy="100" fill="transparent" stroke-width="20">
     </circle>
@@ -301,15 +301,71 @@ function setOtpDial(val) {
   }
 }
 
+// all enrties found by passhub.net for the current tab 
+let found = [];
+
+
+function updateOtp() {
+  for (let i = 0; i < found.length; i++) {
+    if ('totp_next' in found[i]) {
+      found[i].totp = found[i].totp_next;
+      const record = document.querySelector(`[data-row = "${i}"]`)
+      const totpValue = record.querySelector('.totp-value')
+      if (totpValue) {
+        totpValue.innerText = found[i].totp;
+      }
+    }
+  }
+}
+
 setInterval(() => {
   const d = new Date();
   setOtpDial((d.getSeconds() % 30) * 10 / 3)
+  if ((d.getSeconds() % 30) == 0) {
+    updateOtp()
+  }
 }, 1000)
 
 
-function showCopyDialog(ev) {
+document.querySelector('#modal-mask').addEventListener('click', (ev) => {
   ev.stopPropagation();
-  console.log(ev)
+  ev.target.style.display = 'none';
+
+  const copyDialogs = document.querySelectorAll('.copy-dialog')
+  for (const copyDialog of copyDialogs) {
+    copyDialog.style.display = 'none'
+  }
+})
+
+function copyDivEntryClick(ev, fieldName) {
+  ev.stopPropagation();
+  document.querySelector('#modal-mask').style.display = 'none';
+  const foundEntry = ev.target.closest('.found-entry');
+  const row = parseInt(foundEntry.getAttribute('data-row'));
+  if (paymentStatus == "payment page") {
+    const card = found[row].card;
+    if (fieldName == "cc-name") {
+      navigator.clipboard.writeText(card[4].trim())
+    }
+    if (fieldName == "cc-number") {
+      navigator.clipboard.writeText(card[3].trim())
+    }
+    if (fieldName == "cc-exp-month") {
+      navigator.clipboard.writeText(card[5].trim())
+    }
+    if (fieldName == "cc-exp-year") {
+      navigator.clipboard.writeText(card[6].trim())
+    }
+    if (fieldName == "cc-csc") {
+      navigator.clipboard.writeText(card[7].trim())
+    }
+  } else {
+    const field = found[row][fieldName];
+    navigator.clipboard.writeText(field.trim())
+  }
+
+  const p = ev.target.closest('.copy-dialog');
+  p.style.display = 'none'
 }
 
 function renderFoundEntry(entryData, row) {
@@ -318,34 +374,100 @@ function renderFoundEntry(entryData, row) {
   foundEntry.setAttribute('data-row', `${row}`);
   foundEntry.setAttribute('class', 'found-entry');
 
-
   const copyDialog = document.createElement('div');
   copyDialog.setAttribute('class', 'copy-dialog')
-  const copyUsername = document.createElement('div');
-  copyUsername.innerHTML = '<span>copy username</span>';
-  copyDialog.append(copyUsername);
-  const copyPassword = document.createElement('div');
-  copyPassword.innerHTML = '<span>copy password</span>';
-  copyDialog.append(copyPassword);
+
+  if (paymentStatus == "payment page") {
+
+    const copyCcName = document.createElement('div');
+    copyCcName.innerHTML = '<span>Copy name</span>';
+
+    copyCcName.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-name');
+    })
+    copyDialog.append(copyCcName);
+
+    const copyCcNumber = document.createElement('div');
+    copyCcNumber.innerHTML = '<span>Copy number</span>';
+
+    copyCcNumber.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-number');
+    })
+    copyDialog.append(copyCcNumber);
+
+    const copyCcCSC = document.createElement('div');
+    copyCcCSC.innerHTML = '<span>Copy CVC</span>';
+
+    copyCcCSC.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-csc');
+    })
+    copyDialog.append(copyCcCSC);
+
+    const copyCcExpMonth = document.createElement('div');
+    copyCcExpMonth.innerHTML = '<span>Copy Exp. Month</span>';
+
+    copyCcExpMonth.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-exp-month');
+    })
+    copyDialog.append(copyCcExpMonth);
+
+    const copyCcExpYear = document.createElement('div');
+    copyCcExpYear.innerHTML = '<span>Copy Exp. Year</span>';
+
+    copyCcExpYear.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-exp-year');
+    })
+    copyDialog.append(copyCcExpYear);
+
+
+  } else {
+    const copyUsername = document.createElement('div');
+    copyUsername.innerHTML = '<span>Copy Username</span>';
+
+    copyUsername.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'username');
+    })
+    copyDialog.append(copyUsername);
+
+    const copyPassword = document.createElement('div');
+    copyPassword.innerHTML = '<span>Copy Password</span>';
+
+    copyPassword.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'password');
+    })
+    copyDialog.append(copyPassword);
+  }
+
+
+  foundEntry.setAttribute('title', 'Click to fill the form');
 
   if ("totp" in entryData) {
     const copyTotp = document.createElement('div');
-    copyTotp.innerHTML = '<span>copy one-time code</span>';
+    copyTotp.innerHTML = '<span>Copy One-time Code</span>';
+
+    copyTotp.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'totp');
+    })
     copyDialog.append(copyTotp);
+    foundEntry.setAttribute('title', 'Click to fill the form & copy TOTP');
   }
+
+  copyDialog.style.display = 'none';
   foundEntry.append(copyDialog);
 
   const fillSpan = document.createElement('span')
-  // fillSpan.innerText = "autofill";
-  fillSpan.style.cursor = "pointer";
+  fillSpan.setAttribute('class', 'three-dots')
 
-  fillSpan.innerHTML = '<img class="tree-dots" src="images/three-dots-vertical.svg">'
+  fillSpan.innerHTML = '<img src="images/three-dots-vertical.svg">'
+  fillSpan.setAttribute('title', 'Details')
   foundEntry.append(fillSpan);
+
   fillSpan.addEventListener('click', (ev) => {
     ev.stopPropagation();
     const p = ev.target.closest('.found-entry');
     const c = p.querySelector('.copy-dialog');
     c.style.display = 'block';
+    document.querySelector('#modal-mask').style.display = 'block'
   })
 
   foundEntry.onclick = advItemClick;
@@ -365,37 +487,31 @@ function renderFoundEntry(entryData, row) {
     totpDiv.setAttribute('class', 'found-totp');
     totpDiv.innerHTML = dial;
     totpDiv.innerHTML += '<div style="margin: 0 20px 0 10px; font-size: 14px">One-time code (TOTP)</div>';
+    const totpValue = document.createElement('div');
+    totpValue.setAttribute("title", "Copy one-time code");
 
-    totpDiv.innerHTML += `<div><code>${entryData.totp}</code></div> `;
-
-
-    /*
-      const copySpan = document.createElement('span')
-      copySpan.innerText = "copy";
-      totpDiv.append(copySpan);
-    */
-    foundEntry.appendChild(totpDiv);
-    totpDiv.addEventListener('click', (ev) => {
+    totpValue.innerHTML = `<code class="totp-value">${entryData.totp}</code>`;
+    totpValue.addEventListener('click', (ev) => {
       ev.stopPropagation();
       //          let t = ev.target.innerText;
       navigator.clipboard.writeText(entryData.totp.trim()).then(() => {
         windowClose();
       })
     })
+    totpDiv.appendChild(totpValue);
+    foundEntry.appendChild(totpDiv);
   }
   return foundEntry;
 }
 
-let found = [];
-
-function renderAccounts(m) {
+function renderAccounts(message) {
 
   const passhubInstanceDiv = document.getElementById('passhub-instance');
-  if (('passhubInstance' in m) && (m.passhubInstance != "passhub.net") && (m.passhubInstance != "www.passhub.net")) {
-    if (m.passhubInstance.startsWith("www.")) {
-      passhubInstanceDiv.innerText = m.passhubInstance.substring(4);
+  if (('passhubInstance' in message) && (message.passhubInstance != "passhub.net") && (message.passhubInstance != "www.passhub.net")) {
+    if (message.passhubInstance.startsWith("www.")) {
+      passhubInstanceDiv.innerText = message.passhubInstance.substring(4);
     } else {
-      passhubInstanceDiv.innerText = m.passhubInstance;
+      passhubInstanceDiv.innerText = message.passhubInstance;
     }
     passhubInstanceDiv.style.display = 'block';
   } else {
@@ -413,30 +529,55 @@ function renderAccounts(m) {
     }
   }
 
-  found = m.found;
-  consoleLog('renderAccount found: ' + m.found.length);
+  found = message.found;
+  consoleLog('renderAccount found: ' + message.found.length);
+
+  if (message.id === "payment") {
+    paymentStatus = "payment page";
+    document.querySelector('.credit-card').style.display = 'none';
+  } else {
+    document.querySelector('.credit-card').style.display = 'initial';
+    document.querySelector('.credit-card').addEventListener('click', () => {
+
+      chrome.runtime.sendMessage({ id: "payment page" /*, url: tab.url, tabId: tab.id */ })
+        .then(bgResponse => {
+          consoleLog('popup got background response');
+          consoleLog(bgResponse);
+          const p = document.querySelector('#status-text');
+          if (bgResponse.status == 'not connected') {
+            const signIn = document.getElementById('sign-in');
+            signIn.style.display = 'block';
+            document.querySelector('#passhub-link').onclick = activatePassHubTab;
+          }
+        })
+        .catch(err => {
+          consoleLog('catch 32');
+          consoleLog(err);
+        })
+
+    })
+  }
 
   if (found.length === 0) {
     const notFound = document.getElementById('not-found');
     notFound.style.display = 'block';
-    if (m.id === "payment") {
+    if (message.id === "payment") {
       document.getElementById("not-found-password").style.display = "none";
       document.getElementById("not-found-payment-card").style.display = "block";
     } else {
       document.getElementById("not-found-password").style.display = "block";
       document.getElementById("not-found-payment-card").style.display = "none";
       const notFoundHostName = document.getElementById("not-found-hostname");
-      notFoundHostName.innerText = m.hostname;
+      notFoundHostName.innerText = message.hostname;
     }
     return;
   }
 
   const adviceListDiv = document.querySelector('#advice');
+  adviceListDiv.innerHTML = '';
   consoleLog('renderAccount in advice');
   try {
     for (let i = 0; i < found.length; i++) {
-
-
       consoleLog('rendering ' + i + 1);
       const foundEntry = renderFoundEntry(found[i], i)
 
