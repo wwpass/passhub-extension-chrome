@@ -70,11 +70,11 @@ body {
 }
 
 .found-entry .three-dots:hover {
-  right: 5px;
+  right: 3px;
 }
 
 .found-entry .three-dots:hover img {
-  height: 24px;
+  height: 21px;
 }
 
 
