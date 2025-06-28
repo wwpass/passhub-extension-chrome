@@ -30,20 +30,14 @@
   },
   "action": {
     "default_icon": {
-      "16": "images/passhub16.png",
-      "32": "images/passhub32.png",
-      "48": "images/passhub48.png",
-      "64": "images/passhub64.png",
-      "128": "images/passhub128.png"
+      "48": "images/passhub-2d-48.png",
+      "128": "images/passhub-2d-128.png"
     },
     "default_popup": "popup.html"
   },
   "icons": {
-    "16": "images/passhub16.png",
-    "32": "images/passhub32.png",
-    "48": "images/passhub48.png",
-    "64": "images/passhub64.png",
-    "128": "images/passhub128.png"
+    "48": "images/passhub-2d-48.png",
+    "128": "images/passhub-2d-128.png"
   },
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAubjP11t//uccic4AGiVJRd89cIO8I3NoOChckHIDpxPSvxxAMD6864033bJJWWmjU6/fKq+au92kb7akwDaGZphTDKDaNdZjadx4g9oF/PIqHbE/loKoaIJ8U1OPOACuS7UvTQVSW/JNDcvpZPD0rbAu6nJ5jV0b/7Pxt/SSraEHTtGOiIFNpBp4n/pnt8SpPli09iNDCYR+o+sTCWDgF4EgABAjOihogc45rCzGsyFZB8J/l9FCD8P2Kx8z243JRn/9HoS67xAgGBK/BBcaVjazLtRuQjRyVhS5xYAUPcnLnynyCRY4YEvmGpT0lz0RewUo+G+/E5EQpU7voaBl1QIDAQAB",
   "manifest_version": 3
