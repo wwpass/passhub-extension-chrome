@@ -1,11 +1,9 @@
-const consoleLog = console.log;
-// const consoleLog = () => { };
+const consoleLog = () => { };
+const windowClose = window.close;
 
-
-// const windowClose = window.close;
-const windowClose = () => {
-  console.log('xxx')
-};
+// Debug mode:
+// const consoleLog = console.log;
+// const windowClose = () => { consoleLog('xxx')};
 
 consoleLog(logtime() + 'passhub extension popup start');
 
@@ -368,6 +366,16 @@ function copyDivEntryClick(ev, fieldName) {
   p.style.display = 'none'
 }
 
+function startCopiedTimer() {
+  setTimeout(() => {
+    document
+      .querySelectorAll(".copied")
+      .forEach((e) => (e.style.display = "none"));
+    windowClose();
+
+  }, 1000);
+}
+
 function renderFoundEntry(entryData, row) {
 
   const foundEntry = document.createElement('div');
@@ -490,12 +498,19 @@ function renderFoundEntry(entryData, row) {
     const totpValue = document.createElement('div');
     totpValue.setAttribute("title", "Copy one-time code");
 
-    totpValue.innerHTML = `<code class="totp-value">${entryData.totp}</code>`;
+    totpValue.innerHTML = `<code class="totp-value">${entryData.totp}
+            <div class="copied" >
+              <div>Copied &#10003;</div>
+            </div>
+          </code>`
+      ;
+
     totpValue.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      //          let t = ev.target.innerText;
+      totpValue.querySelector('.copied').style.display = 'initial';
+      startCopiedTimer();
       navigator.clipboard.writeText(entryData.totp.trim()).then(() => {
-        windowClose();
+        //windowClose();
       })
     })
     totpDiv.appendChild(totpValue);
@@ -677,8 +692,6 @@ function activatePassHubDocTab() {
   });
 }
 
-document.querySelector('.help').onclick = activatePassHubDocTab;
-
 function activatePassHubTab() {
   const manifest = chrome.runtime.getManifest();
   const urlList = manifest.externally_connectable.matches;
@@ -695,7 +708,11 @@ function activatePassHubTab() {
   });
 }
 
-document.querySelector('.close-popup').onclick = () => windowClose();
+document.querySelector('.help').onclick = activatePassHubDocTab;
+
+document.querySelector('.close-popup').addEventListener('click', (ev) => {
+  windowClose()
+});
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   consoleLog('popup got message');
