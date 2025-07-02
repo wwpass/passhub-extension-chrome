@@ -1,9 +1,9 @@
-const consoleLog = () => { };
-const windowClose = window.close;
+// const consoleLog = () => { };
+// const windowClose = window.close;
 
 // Debug mode:
-// const consoleLog = console.log;
-// const windowClose = () => { consoleLog('xxx')};
+const consoleLog = console.log;
+const windowClose = () => { consoleLog('xxx') };
 
 consoleLog(logtime() + 'passhub extension popup start');
 
@@ -324,10 +324,23 @@ setInterval(() => {
   }
 }, 1000)
 
+function hideTitles() {
+  for (const foundEntry of document.querySelectorAll(".found-entry")) {
+    foundEntry.setAttribute('data-save-title', foundEntry.title);
+    foundEntry.title = '';
+  }
+}
+
+function restoreTitles() {
+  for (const foundEntry of document.querySelectorAll(".found-entry")) {
+    foundEntry.title = foundEntry.getAttribute('data-save-title');
+  }
+}
 
 document.querySelector('#modal-mask').addEventListener('click', (ev) => {
   ev.stopPropagation();
   ev.target.style.display = 'none';
+  restoreTitles();
 
   const copyDialogs = document.querySelectorAll('.copy-dialog')
   for (const copyDialog of copyDialogs) {
@@ -338,6 +351,7 @@ document.querySelector('#modal-mask').addEventListener('click', (ev) => {
 function copyDivEntryClick(ev, fieldName) {
   ev.stopPropagation();
   document.querySelector('#modal-mask').style.display = 'none';
+  restoreTitles();
   const foundEntry = ev.target.closest('.found-entry');
   const row = parseInt(foundEntry.getAttribute('data-row'));
   if (paymentStatus == "payment page") {
@@ -354,6 +368,11 @@ function copyDivEntryClick(ev, fieldName) {
     if (fieldName == "cc-exp-year") {
       navigator.clipboard.writeText(card[6].trim())
     }
+    if (fieldName == "cc-exp") {
+      const exp = `${card[5]}/${[card].slice(-2)}`
+      navigator.clipboard.writeText(exp)
+    }
+
     if (fieldName == "cc-csc") {
       navigator.clipboard.writeText(card[7].trim())
     }
@@ -387,6 +406,8 @@ function renderFoundEntry(entryData, row) {
 
   if (paymentStatus == "payment page") {
 
+    const card = found[row].card;
+
     const copyCcName = document.createElement('div');
     copyCcName.innerHTML = '<span>Copy name</span>';
 
@@ -410,23 +431,30 @@ function renderFoundEntry(entryData, row) {
       copyDivEntryClick(ev, 'cc-csc');
     })
     copyDialog.append(copyCcCSC);
+    /*
+        const copyCcExpMonth = document.createElement('div');
+        copyCcExpMonth.innerHTML = '<span>Copy Exp. Month</span>';
+    
+        copyCcExpMonth.addEventListener('click', (ev) => {
+          copyDivEntryClick(ev, 'cc-exp-month');
+        })
+        copyDialog.append(copyCcExpMonth);
+    
+        const copyCcExpYear = document.createElement('div');
+        copyCcExpYear.innerHTML = '<span>Copy Exp. Year</span>';
+    
+        copyCcExpYear.addEventListener('click', (ev) => {
+          copyDivEntryClick(ev, 'cc-exp-year');
+        })
+        copyDialog.append(copyCcExpYear);
+    */
+    const copyCcExp = document.createElement('div');
+    copyCcExp.innerHTML = `<span>Copy Exp. Date ${card[5]}/${card[6].slice(-2)}</span>`;
 
-    const copyCcExpMonth = document.createElement('div');
-    copyCcExpMonth.innerHTML = '<span>Copy Exp. Month</span>';
-
-    copyCcExpMonth.addEventListener('click', (ev) => {
-      copyDivEntryClick(ev, 'cc-exp-month');
+    copyCcExp.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-exp');
     })
-    copyDialog.append(copyCcExpMonth);
-
-    const copyCcExpYear = document.createElement('div');
-    copyCcExpYear.innerHTML = '<span>Copy Exp. Year</span>';
-
-    copyCcExpYear.addEventListener('click', (ev) => {
-      copyDivEntryClick(ev, 'cc-exp-year');
-    })
-    copyDialog.append(copyCcExpYear);
-
+    copyDialog.append(copyCcExp);
 
   } else {
     const copyUsername = document.createElement('div');
@@ -476,6 +504,7 @@ function renderFoundEntry(entryData, row) {
     const c = p.querySelector('.copy-dialog');
     c.style.display = 'block';
     document.querySelector('#modal-mask').style.display = 'block'
+    hideTitles()
   })
 
   foundEntry.onclick = advItemClick;
