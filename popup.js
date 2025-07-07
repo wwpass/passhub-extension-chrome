@@ -1,9 +1,9 @@
-// const consoleLog = () => { };
-// const windowClose = window.close;
+const consoleLog = () => { };
+const windowClose = window.close;
 
 // Debug mode:
-const consoleLog = console.log;
-const windowClose = () => { consoleLog('xxx') };
+// const consoleLog = console.log;
+// const windowClose = () => { consoleLog('xxx') };
 
 consoleLog(logtime() + 'passhub extension popup start');
 
@@ -160,6 +160,17 @@ function paymentPlatform() {
   return null;
 }
 
+function notRegularPage(url, protocol = "") {
+  document.getElementById('not-a-regular-page').style.display = 'block';
+
+  if (protocol == "http:") {
+    document.getElementById('not-a-regular-page-text').innerText = "Not a secure HTTPS page";
+  } else {
+    document.getElementById('not-a-regular-page-text').innerText = "Not a regular page";
+  }
+  document.getElementById('not-a-regular-page-url').innerText = url;
+}
+
 function installScript(tab, frame) {
   consoleLog(`installScript for frame ${frame.frameId} ${frame.url}`);
 
@@ -204,17 +215,6 @@ function installScript(tab, frame) {
           gotPaymentStatus(tab, frame, { payment: "not valid frame" });
         })
     })
-}
-
-function notRegularPage(url, protocol = "") {
-  document.getElementById('not-a-regular-page').style.display = 'block';
-
-  if (protocol == "http:") {
-    document.getElementById('not-a-regular-page-text').innerText = "Not a secure HTTPS page";
-  } else {
-    document.getElementById('not-a-regular-page-text').innerText = "Not a regular page";
-  }
-  document.getElementById('not-a-regular-page-url').innerText = url;
 }
 
 chrome.tabs.query({ active: true, currentWindow: true })
@@ -302,7 +302,6 @@ function setOtpDial(val) {
 // all enrties found by passhub.net for the current tab 
 let found = [];
 
-
 function updateOtp() {
   for (let i = 0; i < found.length; i++) {
     if ('totp_next' in found[i]) {
@@ -369,10 +368,9 @@ function copyDivEntryClick(ev, fieldName) {
       navigator.clipboard.writeText(card[6].trim())
     }
     if (fieldName == "cc-exp") {
-      const exp = `${card[5]}/${[card].slice(-2)}`
+      const exp = `${card[5]}/${card[6].slice(-2)}`
       navigator.clipboard.writeText(exp)
     }
-
     if (fieldName == "cc-csc") {
       navigator.clipboard.writeText(card[7].trim())
     }
@@ -405,8 +403,6 @@ function renderFoundEntry(entryData, row) {
   copyDialog.setAttribute('class', 'copy-dialog')
 
   if (paymentStatus == "payment page") {
-
-    const card = found[row].card;
 
     const copyCcName = document.createElement('div');
     copyCcName.innerHTML = '<span>Copy name</span>';
@@ -448,7 +444,9 @@ function renderFoundEntry(entryData, row) {
         })
         copyDialog.append(copyCcExpYear);
     */
+
     const copyCcExp = document.createElement('div');
+    const card = entryData.card;
     copyCcExp.innerHTML = `<span>Copy Exp. Date ${card[5]}/${card[6].slice(-2)}</span>`;
 
     copyCcExp.addEventListener('click', (ev) => {
@@ -473,7 +471,6 @@ function renderFoundEntry(entryData, row) {
     })
     copyDialog.append(copyPassword);
   }
-
 
   foundEntry.setAttribute('title', 'Click to fill the form');
 
@@ -626,7 +623,6 @@ function renderAccounts(message) {
       const foundEntry = renderFoundEntry(found[i], i)
 
       adviceListDiv.appendChild(foundEntry);
-      consoleLog('22');
     }
   } catch (e) {
     consoleLog('catch 193');
