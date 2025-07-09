@@ -615,7 +615,18 @@ function renderAccounts(message) {
   }
 
   const adviceListDiv = document.querySelector('#advice');
-  adviceListDiv.innerHTML = '';
+  adviceListDiv.innerHTML = `<div style="
+            font-family: OpenSansBold;
+            font-style: normal;
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 19px;
+            color: #1b1b26;
+            margin-bottom: 9px;
+          ">
+        Found:
+      </div>`;
+
   consoleLog('renderAccount in advice');
   try {
     for (let i = 0; i < found.length; i++) {
