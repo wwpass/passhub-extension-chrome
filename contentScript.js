@@ -61,6 +61,45 @@ function isUsernameCandidate(input) {
   return true;
 }
 
+function findAllInputs() {
+
+  const inputs = []
+
+  function greet1(r) {
+    console.log(r)
+    const x = []
+    const all = r.querySelectorAll('*');
+
+    all.forEach(e => {
+      if (e.shadowRoot && e.shadowRoot.mode === 'open') {
+        console.log('element with shadowERoot')
+        console.log(e)
+        x.push(e);
+        const allInputs = e.shadowRoot.querySelectorAll('input')
+        allInputs.forEach(i => inputs.push(i))
+        greet1(e.shadowRoot)
+      }
+    })
+
+  }
+
+  document.querySelectorAll('input').forEach(i => inputs.push(i))
+
+  greet1(document)
+
+  /*    
+      if(inputs.length > 0) {
+  //        console.log('inputs found:')
+  //        console.log(inputs)
+          inputs[0].value = 'xxx'
+      } else {
+          console.log('no inputs found')
+      }
+  */
+  return inputs;
+};
+
+
 function fillCredentials(loginData = null) {
   if (!loginData) {
 
@@ -73,7 +112,9 @@ function fillCredentials(loginData = null) {
   let passwordInput = null;
   let frameId = loginData.frameId; // debug
 
-  const inputs = document.querySelectorAll('input');
+  //  const inputs = document.querySelectorAll('input');
+  const inputs = findAllInputs()
+
 
   fillCounter++;
 
@@ -153,6 +194,13 @@ function fillCredentials(loginData = null) {
       if (usernameInput && passwordInput) {
         break;
       }
+
+      /*
+            if (usernameInput || passwordInput) {
+              break;
+            }
+      */
+
     }
   }
 
@@ -193,7 +241,8 @@ function fillCredentials(loginData = null) {
   }
 
   if (usernameInput == null && passwordInput == null) {
-    if (fillCounter > 20) {
+    //    if (fillCounter > 20) {
+    if (true) {
       consoleLog('contentScript nothing found');
       clearInterval(intervalID);
       intervalID = null;
@@ -283,12 +332,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     "from the extension");
   if (message.id === "loginRequest") {
     initFillCredentials();
-    //      fillCredentials(message);
-    intervalID = setInterval(() => {
-      fillCredentials(message);
-      consoleLog(`fillCounter ${fillCounter}`)
-    },
-      100);
+
+    fillCredentials(message);
+
+    /*    
+        intervalID = setInterval(() => {
+          fillCredentials(message);
+          consoleLog(`fillCounter ${fillCounter}`)
+        },
+          100);
+    */
     sendResponse({ farewell: "Ok" });
     return;
   }
