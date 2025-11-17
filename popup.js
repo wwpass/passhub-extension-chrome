@@ -1,9 +1,9 @@
-// const consoleLog = console.log;
 const consoleLog = () => { };
-
-
 const windowClose = window.close;
-//const windowClose = () => { };
+
+// Debug mode:
+// const consoleLog = console.log;
+// const windowClose = () => { consoleLog('xxx') };
 
 consoleLog(logtime() + 'passhub extension popup start');
 
@@ -70,18 +70,18 @@ function gotPaymentStatus(tab, frame, response) {
       consoleLog(`frame ${frame.frameId} ${frame.url} urllength ${frameDomains.length}`);
       if (maxLength - minLength > 1) {
         consoleLog('not same length');
-        break;
+        continue;
       }
       let same = true;
       for (let i = 0; i < minLength; i++) {
         if (frameDomains[i] != mainDomains[i]) {
           same = false;
-          consoleLog('not sameUrl');
+          consoleLog('not sameUrl: ' + frameDomains[i] + ' != ' + mainDomains[i]);
           break;
         }
       }
       if (same) {
-        consoleLog('sameUrl');
+        consoleLog('sameUrl: ' + frameDomains.join('.'));
         sameUrlFrames.push(frame);
       }
     }
@@ -160,6 +160,17 @@ function paymentPlatform() {
   return null;
 }
 
+function notRegularPage(url, protocol = "") {
+  document.getElementById('not-a-regular-page').style.display = 'block';
+
+  if (protocol == "http:") {
+    document.getElementById('not-a-regular-page-text').innerText = "Not a secure HTTPS page";
+  } else {
+    document.getElementById('not-a-regular-page-text').innerText = "Not a regular page";
+  }
+  document.getElementById('not-a-regular-page-url').innerText = url;
+}
+
 function installScript(tab, frame) {
   consoleLog(`installScript for frame ${frame.frameId} ${frame.url}`);
 
@@ -204,17 +215,6 @@ function installScript(tab, frame) {
           gotPaymentStatus(tab, frame, { payment: "not valid frame" });
         })
     })
-}
-
-function notRegularPage(url, protocol = "") {
-  document.getElementById('not-a-regular-page').style.display = 'block';
-
-  if (protocol == "http:") {
-    document.getElementById('not-a-regular-page-text').innerText = "Not a secure HTTPS page";
-  } else {
-    document.getElementById('not-a-regular-page-text').innerText = "Not a regular page";
-  }
-  document.getElementById('not-a-regular-page-url').innerText = url;
 }
 
 chrome.tabs.query({ active: true, currentWindow: true })
@@ -268,16 +268,291 @@ chrome.tabs.query({ active: true, currentWindow: true })
       })
   });
 
+const dial =
+  `<svg style="transform: rotate(90deg) scale(-1,1)" width="24" viewBox="0 0 200 200" version="1.1"
+    xmlns="http://www.w3.org/2000/svg">
+    <circle r="90" cx="100" cy="100" fill="transparent" stroke-width="20">
+    </circle>
+    <circle class="otp-dial" r="85" cx="100" cy="100" fill="transparent"  stroke-width="30";
+        stroke-dashoffset="0"></circle>
+</svg>`
+
+function setOtpDial(val) {
+  const circles = document.querySelectorAll('svg .otp-dial');
+
+  if (isNaN(val)) {
+    val = 100;
+  } else {
+    if (val < 0) { val = 0; }
+    if (val > 100) { val = 100; }
+
+
+    for (const circle of circles) {
+      const r = circle.getAttribute('r');
+      const c = Math.PI * (r * 2);
+      const pct = c - ((100 - val) / 100) * c;
+
+      circle.style.strokeDashoffset = pct;
+      circle.style.strokeDasharray = c;
+
+    }
+  }
+}
+
+// all enrties found by passhub.net for the current tab 
 let found = [];
 
-function renderAccounts(m) {
+function updateOtp() {
+  for (let i = 0; i < found.length; i++) {
+    if ('totp_next' in found[i]) {
+      found[i].totp = found[i].totp_next;
+      const record = document.querySelector(`[data-row = "${i}"]`)
+      const totpValue = record.querySelector('.totp-value')
+      if (totpValue) {
+        totpValue.innerText = found[i].totp;
+      }
+    }
+  }
+}
+
+setInterval(() => {
+  const d = new Date();
+  setOtpDial((d.getSeconds() % 30) * 10 / 3)
+  if ((d.getSeconds() % 30) == 0) {
+    updateOtp()
+  }
+}, 1000)
+
+function hideTitles() {
+  for (const foundEntry of document.querySelectorAll(".found-entry")) {
+    foundEntry.setAttribute('data-save-title', foundEntry.title);
+    foundEntry.title = '';
+  }
+}
+
+function restoreTitles() {
+  for (const foundEntry of document.querySelectorAll(".found-entry")) {
+    foundEntry.title = foundEntry.getAttribute('data-save-title');
+  }
+}
+
+document.querySelector('#modal-mask').addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  ev.target.style.display = 'none';
+  restoreTitles();
+
+  const copyDialogs = document.querySelectorAll('.copy-dialog')
+  for (const copyDialog of copyDialogs) {
+    copyDialog.style.display = 'none'
+  }
+})
+
+function copyDivEntryClick(ev, fieldName) {
+  ev.stopPropagation();
+  document.querySelector('#modal-mask').style.display = 'none';
+  restoreTitles();
+  const foundEntry = ev.target.closest('.found-entry');
+  const row = parseInt(foundEntry.getAttribute('data-row'));
+  if (paymentStatus == "payment page") {
+    const card = found[row].card;
+    if (fieldName == "cc-name") {
+      navigator.clipboard.writeText(card[4].trim())
+    }
+    if (fieldName == "cc-number") {
+      navigator.clipboard.writeText(card[3].trim())
+    }
+    if (fieldName == "cc-exp-month") {
+      navigator.clipboard.writeText(card[5].trim())
+    }
+    if (fieldName == "cc-exp-year") {
+      navigator.clipboard.writeText(card[6].trim())
+    }
+    if (fieldName == "cc-exp") {
+      const exp = `${card[5]}/${card[6].slice(-2)}`
+      navigator.clipboard.writeText(exp)
+    }
+    if (fieldName == "cc-csc") {
+      navigator.clipboard.writeText(card[7].trim())
+    }
+  } else {
+    const field = found[row][fieldName];
+    navigator.clipboard.writeText(field.trim())
+  }
+
+  const p = ev.target.closest('.copy-dialog');
+  p.style.display = 'none'
+}
+
+function startCopiedTimer() {
+  setTimeout(() => {
+    document
+      .querySelectorAll(".copied")
+      .forEach((e) => (e.style.display = "none"));
+    windowClose();
+
+  }, 1000);
+}
+
+function renderFoundEntry(entryData, row) {
+
+  const foundEntry = document.createElement('div');
+  foundEntry.setAttribute('data-row', `${row}`);
+  foundEntry.setAttribute('class', 'found-entry');
+
+  const copyDialog = document.createElement('div');
+  copyDialog.setAttribute('class', 'copy-dialog')
+
+  if (paymentStatus == "payment page") {
+
+    const copyCcName = document.createElement('div');
+    copyCcName.innerHTML = '<span>Copy name</span>';
+
+    copyCcName.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-name');
+    })
+    copyDialog.append(copyCcName);
+
+    const copyCcNumber = document.createElement('div');
+    copyCcNumber.innerHTML = '<span>Copy number</span>';
+
+    copyCcNumber.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-number');
+    })
+    copyDialog.append(copyCcNumber);
+
+    const copyCcCSC = document.createElement('div');
+    copyCcCSC.innerHTML = '<span>Copy CVC</span>';
+
+    copyCcCSC.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-csc');
+    })
+    copyDialog.append(copyCcCSC);
+    /*
+        const copyCcExpMonth = document.createElement('div');
+        copyCcExpMonth.innerHTML = '<span>Copy Exp. Month</span>';
+    
+        copyCcExpMonth.addEventListener('click', (ev) => {
+          copyDivEntryClick(ev, 'cc-exp-month');
+        })
+        copyDialog.append(copyCcExpMonth);
+    
+        const copyCcExpYear = document.createElement('div');
+        copyCcExpYear.innerHTML = '<span>Copy Exp. Year</span>';
+    
+        copyCcExpYear.addEventListener('click', (ev) => {
+          copyDivEntryClick(ev, 'cc-exp-year');
+        })
+        copyDialog.append(copyCcExpYear);
+    */
+
+    const copyCcExp = document.createElement('div');
+    const card = entryData.card;
+    copyCcExp.innerHTML = `<span>Copy Exp. Date ${card[5]}/${card[6].slice(-2)}</span>`;
+
+    copyCcExp.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'cc-exp');
+    })
+    copyDialog.append(copyCcExp);
+
+  } else {
+    const copyUsername = document.createElement('div');
+    copyUsername.innerHTML = '<span>Copy Username</span>';
+
+    copyUsername.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'username');
+    })
+    copyDialog.append(copyUsername);
+
+    const copyPassword = document.createElement('div');
+    copyPassword.innerHTML = '<span>Copy Password</span>';
+
+    copyPassword.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'password');
+    })
+    copyDialog.append(copyPassword);
+  }
+
+  foundEntry.setAttribute('title', 'Click to fill the form');
+
+  if ("totp" in entryData) {
+    const copyTotp = document.createElement('div');
+    copyTotp.innerHTML = '<span>Copy One-time Code</span>';
+
+    copyTotp.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'totp');
+    })
+    copyDialog.append(copyTotp);
+    foundEntry.setAttribute('title', 'Click to fill the form & copy TOTP');
+  }
+
+  copyDialog.style.display = 'none';
+  foundEntry.append(copyDialog);
+
+  const fillSpan = document.createElement('span')
+  fillSpan.setAttribute('class', 'three-dots')
+
+  fillSpan.innerHTML = '<img src="images/three-dots-vertical.svg">'
+  fillSpan.setAttribute('title', 'Details')
+  foundEntry.append(fillSpan);
+
+  fillSpan.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const p = ev.target.closest('.found-entry');
+    const c = p.querySelector('.copy-dialog');
+    c.style.display = 'block';
+    document.querySelector('#modal-mask').style.display = 'block'
+    hideTitles()
+  })
+
+  foundEntry.onclick = advItemClick;
+
+  const titleDiv = document.createElement('div');
+  titleDiv.setAttribute('class', 'found-title');
+  titleDiv.innerText = entryData.title;
+  foundEntry.appendChild(titleDiv);
+
+  const safeDiv = document.createElement('div');
+  safeDiv.setAttribute('class', 'found-safe');
+  safeDiv.innerText = entryData.safe;
+  foundEntry.appendChild(safeDiv);
+
+  if ("totp" in entryData) {
+    const totpDiv = document.createElement('div');
+    totpDiv.setAttribute('class', 'found-totp');
+    totpDiv.innerHTML = dial;
+    totpDiv.innerHTML += '<div style="margin: 0 20px 0 10px; font-size: 14px">One-time code (TOTP)</div>';
+    const totpValue = document.createElement('div');
+    totpValue.setAttribute("title", "Copy one-time code");
+
+    totpValue.innerHTML = `<code class="totp-value">${entryData.totp}
+            <div class="copied" >
+              <div>Copied &#10003;</div>
+            </div>
+          </code>`
+      ;
+
+    totpValue.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      totpValue.querySelector('.copied').style.display = 'initial';
+      startCopiedTimer();
+      navigator.clipboard.writeText(entryData.totp.trim()).then(() => {
+        //windowClose();
+      })
+    })
+    totpDiv.appendChild(totpValue);
+    foundEntry.appendChild(totpDiv);
+  }
+  return foundEntry;
+}
+
+function renderAccounts(message) {
 
   const passhubInstanceDiv = document.getElementById('passhub-instance');
-  if (('passhubInstance' in m) && (m.passhubInstance != "passhub.net") && (m.passhubInstance != "www.passhub.net")) {
-    if (m.passhubInstance.startsWith("www.")) {
-      passhubInstanceDiv.innerText = m.passhubInstance.substring(4);
+  if (('passhubInstance' in message) && (message.passhubInstance != "passhub.net") && (message.passhubInstance != "www.passhub.net")) {
+    if (message.passhubInstance.startsWith("www.")) {
+      passhubInstanceDiv.innerText = message.passhubInstance.substring(4);
     } else {
-      passhubInstanceDiv.innerText = m.passhubInstance;
+      passhubInstanceDiv.innerText = message.passhubInstance;
     }
     passhubInstanceDiv.style.display = 'block';
   } else {
@@ -295,52 +570,76 @@ function renderAccounts(m) {
     }
   }
 
-  found = m.found;
-  consoleLog('renderAccount found: ' + m.found.length);
+  found = message.found;
+  consoleLog('renderAccount found: ' + message.found.length);
+
+  if (message.id === "payment") {
+    paymentStatus = "payment page";
+    document.querySelector('.credit-card').style.display = 'none';
+  } else {
+    document.querySelector('.credit-card').style.display = 'initial';
+    document.querySelector('.credit-card').addEventListener('click', () => {
+
+      chrome.runtime.sendMessage({ id: "payment page" /*, url: tab.url, tabId: tab.id */ })
+        .then(bgResponse => {
+          consoleLog('popup got background response');
+          consoleLog(bgResponse);
+          const p = document.querySelector('#status-text');
+          if (bgResponse.status == 'not connected') {
+            const signIn = document.getElementById('sign-in');
+            signIn.style.display = 'block';
+            document.querySelector('#passhub-link').onclick = activatePassHubTab;
+          }
+        })
+        .catch(err => {
+          consoleLog('catch 32');
+          consoleLog(err);
+        })
+
+    })
+  }
 
   if (found.length === 0) {
     const notFound = document.getElementById('not-found');
     notFound.style.display = 'block';
-    if (m.id === "payment") {
+    if (message.id === "payment") {
       document.getElementById("not-found-password").style.display = "none";
       document.getElementById("not-found-payment-card").style.display = "block";
     } else {
       document.getElementById("not-found-password").style.display = "block";
       document.getElementById("not-found-payment-card").style.display = "none";
       const notFoundHostName = document.getElementById("not-found-hostname");
-      notFoundHostName.innerText = m.hostname;
+      notFoundHostName.innerText = message.hostname;
     }
     return;
   }
 
-  const p = document.querySelector('#advice');
+  const adviceListDiv = document.querySelector('#advice');
+  adviceListDiv.innerHTML = `<div style="
+            font-family: OpenSansBold;
+            font-style: normal;
+            font-weight: bold;
+            font-size: 14px;
+            line-height: 19px;
+            color: #1b1b26;
+            margin-bottom: 9px;
+          ">
+        Found:
+      </div>`;
+
   consoleLog('renderAccount in advice');
   try {
     for (let i = 0; i < found.length; i++) {
       consoleLog('rendering ' + i + 1);
-      const d = document.createElement('div');
-      d.setAttribute('data-row', `${i}`);
-      d.setAttribute('class', 'found-entry');
-      d.onclick = advItemClick;
+      const foundEntry = renderFoundEntry(found[i], i)
 
-      const titleDiv = document.createElement('div');
-      titleDiv.setAttribute('class', 'found-title');
-      titleDiv.innerText = found[i].title;
-      d.appendChild(titleDiv);
-
-      const safeDiv = document.createElement('div');
-      safeDiv.setAttribute('class', 'found-safe');
-      safeDiv.innerText = found[i].safe;
-      d.appendChild(safeDiv);
-
-      p.appendChild(d);
-      consoleLog('22');
+      adviceListDiv.appendChild(foundEntry);
     }
   } catch (e) {
     consoleLog('catch 193');
     consoleLog(e);
   }
-  p.style.display = 'block';
+  adviceListDiv.style.display = 'block';
   consoleLog('renderAccount advise rendered');
 }
 
@@ -354,7 +653,7 @@ function advItemClick(e) {
     .then(tabs => {
 
       if (paymentStatus == "payment page") {
-        consoleLog(`paymentHost ${paymentHost}`)
+        consoleLog(`paymentHost ${paymentHost} `)
         if (paymentHost) {
           consoleLog('paymentFrames');
           consoleLog(paymentFrames);
@@ -386,6 +685,10 @@ function advItemClick(e) {
       for (let frame of sameUrlFrames) {
         consoleLog('frame');
         consoleLog(frame);
+        if ("totp" in found[row]) {
+          navigator.clipboard.writeText(found[row].totp.trim())
+        }
+
         chrome.tabs.sendMessage(
           tabs[0].id,
           {
@@ -425,8 +728,6 @@ function activatePassHubDocTab() {
   });
 }
 
-document.querySelector('.help').onclick = activatePassHubDocTab;
-
 function activatePassHubTab() {
   const manifest = chrome.runtime.getManifest();
   const urlList = manifest.externally_connectable.matches;
@@ -443,7 +744,11 @@ function activatePassHubTab() {
   });
 }
 
-document.querySelector('.close-popup').onclick = () => windowClose();
+document.querySelector('.help').onclick = activatePassHubDocTab;
+
+document.querySelector('.close-popup').addEventListener('click', (ev) => {
+  windowClose()
+});
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   consoleLog('popup got message');
@@ -465,3 +770,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return;
   }
 });
+
+
+

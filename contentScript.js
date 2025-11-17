@@ -15,15 +15,15 @@ function fireEvent(el, name) {
 
 function setInputValue(input, value) {
 
-  //  fireEvent(input, 'focus');
-  //  input.click()
-  //  fireEvent(input, 'keydown');
-  //  fireEvent(input, 'keypress');
-  //  fireEvent(input, 'keyup');
-
+  fireEvent(input, 'focus');
+  fireEvent(input, 'focusin');
+  fireEvent(input, 'keydown');
   input.value = value;
   fireEvent(input, 'input');
   fireEvent(input, 'change');
+  fireEvent(input, 'keyup');
+  fireEvent(input, 'blur');
+  fireEvent(input, 'focusout');
 }
 
 let fillCounter = 0;
@@ -39,14 +39,66 @@ function initFillCredentials() {
 }
 
 function isUsernameCandidate(input) {
-  if (input.id.toLowerCase().search('search') != -1) {
+
+  if ("id" in input && input.id.toLowerCase() == "password") {
     return false;
   }
-  if (input.placeholder.toLowerCase().search('search') != -1) {
+  if ("id" in input && input.id.toLowerCase() == "captcha") {
     return false;
   }
+
+  if ("id" in input && input.id.toLowerCase().search('search') != -1) {
+    return false;
+  }
+  if ("placeholder" in input && input.placeholder.toLowerCase().search('search') != -1) {
+    return false;
+  }
+
+  if (input.getBoundingClientRect().bottom < 0) {
+    return false;
+  }
+
   return true;
 }
+
+function findAllInputs() {
+
+  const inputs = []
+
+  function greet1(r) {
+    console.log(r)
+    const x = []
+    const all = r.querySelectorAll('*');
+
+    all.forEach(e => {
+      if (e.shadowRoot && e.shadowRoot.mode === 'open') {
+        console.log('element with shadowERoot')
+        console.log(e)
+        x.push(e);
+        const allInputs = e.shadowRoot.querySelectorAll('input')
+        allInputs.forEach(i => inputs.push(i))
+        greet1(e.shadowRoot)
+      }
+    })
+
+  }
+
+  document.querySelectorAll('input').forEach(i => inputs.push(i))
+
+  greet1(document)
+
+  /*    
+      if(inputs.length > 0) {
+  //        console.log('inputs found:')
+  //        console.log(inputs)
+          inputs[0].value = 'xxx'
+      } else {
+          console.log('no inputs found')
+      }
+  */
+  return inputs;
+};
+
 
 function fillCredentials(loginData = null) {
   if (!loginData) {
@@ -60,11 +112,13 @@ function fillCredentials(loginData = null) {
   let passwordInput = null;
   let frameId = loginData.frameId; // debug
 
-  const inputs = document.querySelectorAll('input');
+  //  const inputs = document.querySelectorAll('input');
+  const inputs = findAllInputs()
+
 
   fillCounter++;
 
-  if (fillCounter < 200) {
+  if (fillCounter < 100) {
     consoleLog(inputs.length);
   } else {
     clearInterval(intervalID);
@@ -108,8 +162,11 @@ function fillCredentials(loginData = null) {
   */
 
   if (!(usernameInput && passwordInput)) {
-
+    consoleLog('contentScript: looking for username & password inputs');
     for (let input of inputs) {
+      consoleLog('input');
+      consoleLog(input);
+
       if (input.offsetParent === null) {
         continue;
       }
@@ -120,24 +177,30 @@ function fillCredentials(loginData = null) {
         continue;
       }
       const itype = input.type.toLowerCase();
-      if (itype === 'text' && passwordInput == null) {
-        if (isUsernameCandidate(input)) usernameInput = input;
+      if ((passwordInput == null) || (usernameInput == null)) {
+        if ((itype == 'text') || (itype == 'email')) {
+          if (isUsernameCandidate(input)) usernameInput = input;
+        }
       }
-      if (itype === 'email' && passwordInput == null) {
-        usernameInput = input;
+
+      if ("id" in input && input.id == "password") {
+        passwordInput = input;
       }
 
       if (itype === 'password') {
         passwordInput = input;
       }
 
-      if (!passwordInput) {
-        passwordInput = document.querySelector("#password");
-      }
-
       if (usernameInput && passwordInput) {
         break;
       }
+
+      /*
+            if (usernameInput || passwordInput) {
+              break;
+            }
+      */
+
     }
   }
 
@@ -178,7 +241,8 @@ function fillCredentials(loginData = null) {
   }
 
   if (usernameInput == null && passwordInput == null) {
-    if (fillCounter > 20) {
+    //    if (fillCounter > 20) {
+    if (true) {
       consoleLog('contentScript nothing found');
       clearInterval(intervalID);
       intervalID = null;
@@ -268,12 +332,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     "from the extension");
   if (message.id === "loginRequest") {
     initFillCredentials();
-    //      fillCredentials(message);
-    intervalID = setInterval(() => {
-      fillCredentials(message);
-      consoleLog(`fillCounter ${fillCounter}`)
-    },
-      100);
+
+    fillCredentials(message);
+
+    /*    
+        intervalID = setInterval(() => {
+          fillCredentials(message);
+          consoleLog(`fillCounter ${fillCounter}`)
+        },
+          100);
+    */
     sendResponse({ farewell: "Ok" });
     return;
   }
