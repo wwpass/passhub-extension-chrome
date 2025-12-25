@@ -5,38 +5,31 @@ const windowClose = window.close;
 // const consoleLog = console.log;
 // const windowClose = () => { consoleLog('xxx') };
 
-consoleLog(logtime() + 'passhub extension popup start');
-
-function logtime() {
-  const today = new Date();
-  return today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds() + " ";
-}
-
 let activeTab = null;
 
 let frameResponded = 0;
 let validFrames = [];
 let sameUrlFrames = [];
 let paymentFrames = [];
-
 let paymentStatus = "not a payment page";
 let paymentHost = null;
 
+// all enrties found by passhub.net for the current tab 
+let foundRecords = [];
+
 function validFramesRemove(frame) {
   validFrames = validFrames.filter(e => e !== frame);
-  consoleLog(`Removed frame from validFrames ${frame.url}`);
+}
+
+function notConnected() {
+  showPage(".login-page");
+  document.getElementById('server-name-element').style.display = 'none';
+  document.querySelector('#passhub-link').onclick = () => { activatePassHubTab() };
 }
 
 function gotPaymentStatus(tab, frame, response) {
 
-  consoleLog(`gotPaymentStatus from frame ${frame.frameId}`);
-  consoleLog(`frameResponded ${frameResponded + 1} out of ${validFrames.length}`);
-
-  consoleLog(response);
   if (response.payment == "payment page") {
-    consoleLog('paymentFrame')
-    consoleLog(frame)
-
     paymentStatus = response.payment;
     paymentFrames.push(frame);
   }
@@ -48,7 +41,6 @@ function gotPaymentStatus(tab, frame, response) {
   }
 
   if (frameResponded == validFrames.length) {
-    consoleLog('all frames responded');
 
     let mainURL = new URL(activeTab.url);
 
@@ -67,43 +59,31 @@ function gotPaymentStatus(tab, frame, response) {
 
       const minLength = mainDomains.length < frameDomains.length ? mainDomains.length : frameDomains.length;
       const maxLength = mainDomains.length > frameDomains.length ? mainDomains.length : frameDomains.length;
-      consoleLog(`frame ${frame.frameId} ${frame.url} urllength ${frameDomains.length}`);
       if (maxLength - minLength > 1) {
-        consoleLog('not same length');
         continue;
       }
       let same = true;
       for (let i = 0; i < minLength; i++) {
         if (frameDomains[i] != mainDomains[i]) {
           same = false;
-          consoleLog('not sameUrl: ' + frameDomains[i] + ' != ' + mainDomains[i]);
           break;
         }
       }
       if (same) {
-        consoleLog('sameUrl: ' + frameDomains.join('.'));
         sameUrlFrames.push(frame);
       }
     }
 
-    consoleLog('sameUrlFrames');
-    consoleLog(sameUrlFrames);
-
-
-    consoleLog('paymentFrames');
-    consoleLog(paymentFrames);
-
     if (paymentFrames.length) {
       const paymentUrl = new URL(paymentFrames[0].url);
       paymentHost = paymentUrl.host;
-      consoleLog(`paymentHost1 ${paymentHost}`)
 
       /*      
             for (let payFrame of paymentFrames) {
               const url = new URL(payFrame.url);
               const host = url.host;
               if (host != paymentHost) {
-                console.log('host witrh wrong url', host);
+                console.log('host with wrong url', host);
       
                 paymentHost = null;
                 paymentStatus = "not a payment page";
@@ -111,19 +91,13 @@ function gotPaymentStatus(tab, frame, response) {
               }
             }
       */
-
-      consoleLog(`paymentHost ${paymentHost}`)
     }
 
     chrome.runtime.sendMessage({ id: paymentHost ? "payment page" : "not a payment page", url: tab.url, tabId: tab.id })
       .then(bgResponse => {
-        consoleLog('popup got background response');
-        consoleLog(bgResponse);
         const p = document.querySelector('#status-text');
         if (bgResponse.status == 'not connected') {
-          const signIn = document.getElementById('sign-in');
-          signIn.style.display = 'block';
-          document.querySelector('#passhub-link').onclick = activatePassHubTab;
+          notConnected();
         }
       })
       .catch(err => {
@@ -150,40 +124,27 @@ function paymentPlatform() {
     if (parts.length > 1) {
       pHost = parts.slice(parts.length - 2).join('.')
     }
-    consoleLog(`paymentPlatform pHost ${pHost} mHost ${mHost}`)
     if (pHost != mHost) {
-      consoleLog(`paymentPlatform returns ${paymentHost}`)
-
       return paymentHost;
     }
   }
   return null;
 }
 
-function notRegularPage(url, protocol = "") {
-  document.getElementById('not-a-regular-page').style.display = 'block';
-
-  if (protocol == "http:") {
-    document.getElementById('not-a-regular-page-text').innerText = "Not a secure HTTPS page";
-  } else {
-    document.getElementById('not-a-regular-page-text').innerText = "Not a regular page";
-  }
+function notRegularPage(url) {
+  showPage('.not-a-regular-page');
   document.getElementById('not-a-regular-page-url').innerText = url;
 }
 
 function installScript(tab, frame) {
-  consoleLog(`installScript for frame ${frame.frameId} ${frame.url}`);
 
   chrome.tabs.sendMessage(tab.id, { id: 'payment status' }, { frameId: frame.frameId })
     .then(response => {
-      consoleLog(`response ${response.payment} from frame ${frame.frameId} ${frame.url}`);
-      consoleLog(response);
       gotPaymentStatus(tab, frame, response);
     })
     .catch(err => {
       consoleLog(`catch69 frame: ${frame.frameId}`);
       consoleLog(err);
-      // consoleLog(frame);
 
       chrome.scripting.executeScript(
         {
@@ -191,13 +152,9 @@ function installScript(tab, frame) {
           files: ['contentScript.js'],
         })
         .then(injectionResult => {
-          consoleLog('injectionResult');
-          consoleLog(injectionResult);
 
           chrome.tabs.sendMessage(tab.id, { id: 'payment status' }, { frameId: frame.frameId })
             .then(response => {
-              consoleLog(`response from frame ${frame.frameId} after executeScript/sendMessage`);
-              consoleLog(response);
               gotPaymentStatus(tab, frame, response);
             })
             .catch(err => {
@@ -216,57 +173,6 @@ function installScript(tab, frame) {
         })
     })
 }
-
-chrome.tabs.query({ active: true, currentWindow: true })
-  .then(tabs => {
-    activeTab = tabs[0];
-    consoleLog('activeTab');
-    consoleLog(activeTab);
-
-    let mainURL = new URL(activeTab.url);
-    consoleLog('mainURL');
-    consoleLog(mainURL);
-
-
-    if ((mainURL.host == "") || (mainURL.protocol != "https:")) {
-      notRegularPage(activeTab.url, mainURL.protocol);
-      return;
-    }
-
-    let mainUrlFrames = [];  // do we need it?
-
-    chrome.webNavigation.getAllFrames({ tabId: activeTab.id })
-      .then(frameList => {
-        consoleLog(`frameList with ${frameList.length} frames`);
-        for (let frame of frameList) {
-          consoleLog(`${frame.frameId} ${frame.url}`)
-          let frameURL = new URL(frame.url);
-          if ((frameURL.host !== "") || (frameURL.protocol == "https:")) {
-            validFrames.push(frame);
-            if (frameURL.host == mainURL.host) {
-              mainUrlFrames.push(frame);
-            }
-          }
-        }
-        consoleLog('mainUrlFrames');
-        consoleLog(mainUrlFrames);
-
-        if (mainUrlFrames.length == 0) {
-          notRegularPage(activeTab.url);
-          return;
-        }
-
-        consoleLog('Sending message "payment status"');
-        for (let frame of validFrames) {
-          installScript(activeTab, frame)
-        }
-      })
-      .catch(err => {
-        consoleLog('catch 105');
-        consoleLog(err);
-
-      })
-  });
 
 const dial =
   `<svg style="transform: rotate(90deg) scale(-1,1)" width="24" viewBox="0 0 200 200" version="1.1"
@@ -299,17 +205,16 @@ function setOtpDial(val) {
   }
 }
 
-// all enrties found by passhub.net for the current tab 
-let found = [];
+// all entries foundRecords by passhub.net for the current tab 
 
 function updateOtp() {
-  for (let i = 0; i < found.length; i++) {
-    if ('totp_next' in found[i]) {
-      found[i].totp = found[i].totp_next;
+  for (let i = 0; i < foundRecords.length; i++) {
+    if ('totp_next' in foundRecords[i]) {
+      foundRecords[i].totp = foundRecords[i].totp_next;
       const record = document.querySelector(`[data-row = "${i}"]`)
       const totpValue = record.querySelector('.totp-value')
       if (totpValue) {
-        totpValue.innerText = found[i].totp;
+        totpValue.innerText = foundRecords[i].totp;
       }
     }
   }
@@ -354,7 +259,7 @@ function copyDivEntryClick(ev, fieldName) {
   const foundEntry = ev.target.closest('.found-entry');
   const row = parseInt(foundEntry.getAttribute('data-row'));
   if (paymentStatus == "payment page") {
-    const card = found[row].card;
+    const card = foundRecords[row].card;
     if (fieldName == "cc-name") {
       navigator.clipboard.writeText(card[4].trim())
     }
@@ -375,7 +280,7 @@ function copyDivEntryClick(ev, fieldName) {
       navigator.clipboard.writeText(card[7].trim())
     }
   } else {
-    const field = found[row][fieldName];
+    const field = foundRecords[row][fieldName];
     navigator.clipboard.writeText(field.trim())
   }
 
@@ -427,23 +332,6 @@ function renderFoundEntry(entryData, row) {
       copyDivEntryClick(ev, 'cc-csc');
     })
     copyDialog.append(copyCcCSC);
-    /*
-        const copyCcExpMonth = document.createElement('div');
-        copyCcExpMonth.innerHTML = '<span>Copy Exp. Month</span>';
-    
-        copyCcExpMonth.addEventListener('click', (ev) => {
-          copyDivEntryClick(ev, 'cc-exp-month');
-        })
-        copyDialog.append(copyCcExpMonth);
-    
-        const copyCcExpYear = document.createElement('div');
-        copyCcExpYear.innerHTML = '<span>Copy Exp. Year</span>';
-    
-        copyCcExpYear.addEventListener('click', (ev) => {
-          copyDivEntryClick(ev, 'cc-exp-year');
-        })
-        copyDialog.append(copyCcExpYear);
-    */
 
     const copyCcExp = document.createElement('div');
     const card = entryData.card;
@@ -547,48 +435,65 @@ function renderFoundEntry(entryData, row) {
 
 function renderAccounts(message) {
 
-  const passhubInstanceDiv = document.getElementById('passhub-instance');
+  const passhubInstanceLink = document.getElementById('server-name-element');
   if (('passhubInstance' in message) && (message.passhubInstance != "passhub.net") && (message.passhubInstance != "www.passhub.net")) {
     if (message.passhubInstance.startsWith("www.")) {
-      passhubInstanceDiv.innerText = message.passhubInstance.substring(4);
+      passhubInstanceLink.innerText = message.passhubInstance.substring(4);
     } else {
-      passhubInstanceDiv.innerText = message.passhubInstance;
+      passhubInstanceLink.innerText = message.passhubInstance;
     }
-    passhubInstanceDiv.style.display = 'block';
+    passhubInstanceLink.href = `https://${message.passhubInstance}`
+
+    passhubInstanceLink.style.display = 'block';
   } else {
-    passhubInstanceDiv.innerText = '';
-    passhubInstanceDiv.style.display = 'none';
+    passhubInstanceLink.innerText = '';
+    passhubInstanceLink.style.display = 'none';
   }
 
-  if (paymentHost) {
-    let platform = paymentPlatform();
-    consoleLog(`platform ${platform}`)
-    if (platform) {
-      consoleLog(`platform1 ${platform}`);
-      document.getElementById('paygate').style.display = 'block';
-      document.getElementById('paygate-url').innerText = platform;
-    }
-  }
-
-  found = message.found;
-  consoleLog('renderAccount found: ' + message.found.length);
+  foundRecords = message.found;
 
   if (message.id === "payment") {
     paymentStatus = "payment page";
-    document.querySelector('.credit-card').style.display = 'none';
+    document.querySelector('#credit-card').style.display = 'none';
+    document.querySelector('#password-icon').style.display = 'initial';
+    if (paymentHost) {
+      let platform = paymentPlatform();
+      if (platform) {
+        document.getElementById('paygate').style.display = 'block';
+        document.getElementById('paygate-url').innerText = platform;
+      }
+    }
+    document.querySelector('#password-icon').addEventListener('click', () => {
+
+      chrome.tabs.query({ active: true, currentWindow: true })
+        .then(tabs => {
+
+          chrome.runtime.sendMessage({ id: "not a payment page", url: tabs[0].url, tabId: tabs[0].id })
+            .then(bgResponse => {
+              const p = document.querySelector('#status-text');
+              if (bgResponse.status == 'not connected') {
+                notConnected();
+              }
+            })
+            .catch(err => {
+              consoleLog('catch 32');
+              consoleLog(err);
+            })
+        })
+    })
+
   } else {
-    document.querySelector('.credit-card').style.display = 'initial';
-    document.querySelector('.credit-card').addEventListener('click', () => {
+    paymentStatus = "not a payment page";
+
+    document.querySelector('#password-icon').style.display = 'none';
+    document.querySelector('#credit-card').style.display = 'initial';
+    document.querySelector('#credit-card').addEventListener('click', () => {
 
       chrome.runtime.sendMessage({ id: "payment page" /*, url: tab.url, tabId: tab.id */ })
         .then(bgResponse => {
-          consoleLog('popup got background response');
-          consoleLog(bgResponse);
           const p = document.querySelector('#status-text');
           if (bgResponse.status == 'not connected') {
-            const signIn = document.getElementById('sign-in');
-            signIn.style.display = 'block';
-            document.querySelector('#passhub-link').onclick = activatePassHubTab;
+            notConnected();
           }
         })
         .catch(err => {
@@ -599,9 +504,8 @@ function renderAccounts(message) {
     })
   }
 
-  if (found.length === 0) {
-    const notFound = document.getElementById('not-found');
-    notFound.style.display = 'block';
+  if (foundRecords.length === 0) {
+    showPage('.not-found-page');
     if (message.id === "payment") {
       document.getElementById("not-found-password").style.display = "none";
       document.getElementById("not-found-payment-card").style.display = "block";
@@ -614,7 +518,7 @@ function renderAccounts(message) {
     return;
   }
 
-  const adviceListDiv = document.querySelector('#advice');
+  const adviceListDiv = document.querySelector('#advice-list');
   adviceListDiv.innerHTML = `<div style="
             font-family: OpenSansBold;
             font-style: normal;
@@ -627,11 +531,9 @@ function renderAccounts(message) {
         Found:
       </div>`;
 
-  consoleLog('renderAccount in advice');
   try {
-    for (let i = 0; i < found.length; i++) {
-      consoleLog('rendering ' + i + 1);
-      const foundEntry = renderFoundEntry(found[i], i)
+    for (let i = 0; i < foundRecords.length; i++) {
+      const foundEntry = renderFoundEntry(foundRecords[i], i)
 
       adviceListDiv.appendChild(foundEntry);
     }
@@ -640,37 +542,27 @@ function renderAccounts(message) {
     consoleLog(e);
   }
   adviceListDiv.style.display = 'block';
-  consoleLog('renderAccount advise rendered');
+  showPage(".advice-page")
 }
 
 function advItemClick(e) {
-  consoleLog('in dvItemClick');
-  consoleLog(paymentStatus);
   const row = parseInt(this.getAttribute('data-row'));
-  consoleLog(`clicked ${row} row`);
 
   chrome.tabs.query({ active: true, currentWindow: true })
     .then(tabs => {
 
       if (paymentStatus == "payment page") {
-        consoleLog(`paymentHost ${paymentHost} `)
         if (paymentHost) {
-          consoleLog('paymentFrames');
-          consoleLog(paymentFrames);
 
           for (let frame of paymentFrames) {
-            consoleLog('frame');
-            consoleLog(frame);
             chrome.tabs.sendMessage(
               tabs[0].id,
               {
                 id: 'card',
-                card: found[row].card,
+                card: foundRecords[row].card,
               },
               { frameId: frame.frameId })
               .then(response => {
-                consoleLog('response');
-                consoleLog(response);
                 windowClose();
               })
               .catch(err => {
@@ -683,26 +575,22 @@ function advItemClick(e) {
       }
 
       for (let frame of sameUrlFrames) {
-        consoleLog('frame');
-        consoleLog(frame);
-        if ("totp" in found[row]) {
-          navigator.clipboard.writeText(found[row].totp.trim())
+        if ("totp" in foundRecords[row]) {
+          navigator.clipboard.writeText(foundRecords[row].totp.trim())
         }
 
         chrome.tabs.sendMessage(
           tabs[0].id,
           {
             id: 'loginRequest',
-            username: found[row].username,
-            password: found[row].password,
+            username: foundRecords[row].username,
+            password: foundRecords[row].password,
             frameId: frame.frameId //debug
 
           },
           { frameId: frame.frameId }
         )
           .then(response => {
-            consoleLog('response');
-            consoleLog(response);
             windowClose();
           })
           .catch(err => {
@@ -711,6 +599,15 @@ function advItemClick(e) {
           })
       }
     });
+}
+
+function showPage(pageSelector) {
+  const pages = document.querySelectorAll('.page');
+  for (const page of pages) {
+    page.style.display = "none";
+  }
+  const thePage = document.querySelector(pageSelector);
+  thePage.style.display = 'block';
 }
 
 function activatePassHubDocTab() {
@@ -728,40 +625,46 @@ function activatePassHubDocTab() {
   });
 }
 
-function activatePassHubTab() {
+function activatePassHubTab(passhubHost = "passhub.net") {
   const manifest = chrome.runtime.getManifest();
   const urlList = manifest.externally_connectable.matches;
 
-  chrome.tabs.query({ url: urlList, currentWindow: true }, passHubTabs => {
-    for (let tab of passHubTabs) {
-      if (tab.url.includes('doc')) {
-        continue;
+  chrome.tabs.query({ url: urlList, currentWindow: true })
+    .then(passHubTabs => {
+      for (let tab of passHubTabs) {
+        if (tab.url.includes('doc')) {
+          continue;
+        }
+        let url = new URL(tab.url);
+        if (url.host == passhubHost) {
+          chrome.tabs.update(tab.id, { active: true });
+          return;
+        }
       }
-      chrome.tabs.update(tab.id, { active: true });
-      return;
-    }
-    window.open('https://passhub.net/', 'target="_blank"');
-  });
+      window.open(`https://${passhubHost}`, 'target="_blank"');
+    })
+    .catch(err => {
+      consoleLog('catch 657');
+      consoleLog(err);
+    })
 }
 
 document.querySelector('.help').onclick = activatePassHubDocTab;
 
+document.querySelector('#server-name-element').onclick = () => {
+  let passhubHost = document.querySelector('#server-name-element').innerText;
+  activatePassHubTab(passhubHost);
+}
+
 document.querySelector('.close-popup').addEventListener('click', (ev) => {
-  windowClose()
+  window.close()
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  consoleLog('popup got message');
-  consoleLog(request);
-  consoleLog(sender);
 
   if (request.id === "not connected") {
-    const signIn = document.getElementById('sign-in');
     sendResponse({ response: 'Bye' })
-    consoleLog(signIn);
-    signIn.style.display = 'block';
-    document.querySelector('#passhub-link').onclick = activatePassHubTab;
-    consoleLog(signIn.style);
+    notConnected();
   }
 
   if ((request.id === "advise") || (request.id === "payment")) {
@@ -771,5 +674,53 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+chrome.tabs.query({ active: true, currentWindow: true })
+  .then(tabs => {
+    activeTab = tabs[0];
 
+    let mainURL = new URL(activeTab.url);
 
+    if (mainURL.host == "") {
+      notRegularPage(activeTab.url, mainURL.protocol);
+      return;
+    }
+
+    if (mainURL.protocol != "https:") {
+      if (mainURL.protocol == "http:") {
+        document.querySelector("#danger-http").style.display = "block";
+      } else {
+
+        notRegularPage(activeTab.url, mainURL.protocol);
+        return;
+      }
+    }
+
+    let mainUrlFrames = [];  // do we need it?
+
+    chrome.webNavigation.getAllFrames({ tabId: activeTab.id })
+      .then(frameList => {
+        for (let frame of frameList) {
+          let frameURL = new URL(frame.url);
+          if ((frameURL.host !== "") || (frameURL.protocol == "https:")) {
+            validFrames.push(frame);
+            if (frameURL.host == mainURL.host) {
+              mainUrlFrames.push(frame);
+            }
+          }
+        }
+
+        if (mainUrlFrames.length == 0) {
+          notRegularPage(activeTab.url);
+          return;
+        }
+
+        for (let frame of validFrames) {
+          installScript(activeTab, frame)
+        }
+      })
+      .catch(err => {
+        consoleLog('catch 105');
+        consoleLog(err);
+
+      })
+  });
