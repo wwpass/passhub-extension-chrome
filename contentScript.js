@@ -38,7 +38,24 @@ function initFillCredentials() {
   intervalID = null;
 }
 
+
+function isTotpCandidate(input) {
+  const autocomplete = input.getAttribute('autocomplete');
+  if (autocomplete == "one-time-code") {
+    return true;
+  }
+
+  if (input.name.toLowerCase().search("otp") != -1) {
+    return true;
+  }
+  return false;
+}
+
 function isUsernameCandidate(input) {
+
+  if (isTotpCandidate(input)) {
+    return false;
+  }
 
   if ("id" in input && input.id.toLowerCase() == "password") {
     return false;
@@ -80,7 +97,6 @@ function findAllInputs() {
         greet1(e.shadowRoot)
       }
     })
-
   }
 
   document.querySelectorAll('input').forEach(i => inputs.push(i))
@@ -176,6 +192,12 @@ function fillCredentials(loginData = null) {
       if (window.getComputedStyle(input).visibility == 'hidden') {
         continue;
       }
+
+      if (("totp" in loginData) && isTotpCandidate(input)) {
+        setInputValue(input, loginData.totp);
+        return;
+      }
+
       const itype = input.type.toLowerCase();
       if ((passwordInput == null) || (usernameInput == null)) {
         if ((itype == 'text') || (itype == 'email')) {

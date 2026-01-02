@@ -1,8 +1,8 @@
-const consoleLog = () => { };
+// const consoleLog = () => { };
 const windowClose = window.close;
 
 // Debug mode:
-// const consoleLog = console.log;
+const consoleLog = console.log;
 // const windowClose = () => { consoleLog('xxx') };
 
 let activeTab = null;
@@ -77,20 +77,6 @@ function gotPaymentStatus(tab, frame, response) {
     if (paymentFrames.length) {
       const paymentUrl = new URL(paymentFrames[0].url);
       paymentHost = paymentUrl.host;
-
-      /*      
-            for (let payFrame of paymentFrames) {
-              const url = new URL(payFrame.url);
-              const host = url.host;
-              if (host != paymentHost) {
-                console.log('host with wrong url', host);
-      
-                paymentHost = null;
-                paymentStatus = "not a payment page";
-                break;
-              }
-            }
-      */
     }
 
     chrome.runtime.sendMessage({ id: paymentHost ? "payment page" : "not a payment page", url: tab.url, tabId: tab.id })
@@ -132,7 +118,9 @@ function paymentPlatform() {
 }
 
 function notRegularPage(url) {
-  showPage('.not-a-regular-page');
+  // a page where injectScript fails
+  // e.g. about:debugging#/runtime/this-firefox
+  showPage(".not-a-regular-page");
   document.getElementById('not-a-regular-page-url').innerText = url;
 }
 
@@ -443,7 +431,6 @@ function renderAccounts(message) {
       passhubInstanceLink.innerText = message.passhubInstance;
     }
     passhubInstanceLink.href = `https://${message.passhubInstance}`
-
     passhubInstanceLink.style.display = 'block';
   } else {
     passhubInstanceLink.innerText = '';
@@ -456,6 +443,7 @@ function renderAccounts(message) {
     paymentStatus = "payment page";
     document.querySelector('#credit-card').style.display = 'none';
     document.querySelector('#password-icon').style.display = 'initial';
+
     if (paymentHost) {
       let platform = paymentPlatform();
       if (platform) {
@@ -484,7 +472,6 @@ function renderAccounts(message) {
 
   } else {
     paymentStatus = "not a payment page";
-
     document.querySelector('#password-icon').style.display = 'none';
     document.querySelector('#credit-card').style.display = 'initial';
     document.querySelector('#credit-card').addEventListener('click', () => {
@@ -500,12 +487,11 @@ function renderAccounts(message) {
           consoleLog('catch 32');
           consoleLog(err);
         })
-
     })
   }
 
   if (foundRecords.length === 0) {
-    showPage('.not-found-page');
+    showPage(".not-found-page");
     if (message.id === "payment") {
       document.getElementById("not-found-password").style.display = "none";
       document.getElementById("not-found-payment-card").style.display = "block";
@@ -575,19 +561,20 @@ function advItemClick(e) {
       }
 
       for (let frame of sameUrlFrames) {
+
+        const messageToContentScript = {
+          id: 'loginRequest',
+          username: foundRecords[row].username,
+          password: foundRecords[row].password,
+          frameId: frame.frameId //debug
+        }
         if ("totp" in foundRecords[row]) {
           navigator.clipboard.writeText(foundRecords[row].totp.trim())
+          messageToContentScript.totp = foundRecords[row].totp.trim()
         }
 
         chrome.tabs.sendMessage(
-          tabs[0].id,
-          {
-            id: 'loginRequest',
-            username: foundRecords[row].username,
-            password: foundRecords[row].password,
-            frameId: frame.frameId //debug
-
-          },
+          tabs[0].id, messageToContentScript,
           { frameId: frame.frameId }
         )
           .then(response => {
