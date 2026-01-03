@@ -625,6 +625,7 @@ function activatePassHubTab(passhubHost = "passhub.net") {
         let url = new URL(tab.url);
         if (url.host == passhubHost) {
           chrome.tabs.update(tab.id, { active: true });
+          window.close();
           return;
         }
       }
