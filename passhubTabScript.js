@@ -1,12 +1,12 @@
-//const consoleLog = console.log;
+// const consoleLog = console.log;
 const consoleLog = () => { };
 
 consoleLog('passhubTabSript start');
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    consoleLog('message');
+    consoleLog('passhubTabScript: message');
     consoleLog(message);
-    consoleLog('sender');
+    consoleLog('passhubTabScript:  sender');
     consoleLog(sender);
 
     if (message.id === 'request to send') {
