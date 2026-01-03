@@ -8,11 +8,6 @@
   src: url('fonts/OpenSans-Bold.ttf');
 }
 
-@font-face {
-  font-family: OpenSansExtraBold;
-  src: url('fonts/OpenSans-ExtraBold.ttf');
-}
-
 :root {
   --width: 400px;
   --link-color: #31ba68;
@@ -21,15 +16,8 @@
 body {
   margin: 0;
   width: var(--width);
-
+  position: relative;
 }
-
-/* .wrapper {
-  width: 399px;
-  padding: 0;
-  margin: 0;
-  border: black solid 1px;
-} */
 
 #modal-mask {
   display: none;
@@ -43,7 +31,7 @@ body {
 }
 
 header {
-  width: var(--width);
+  /*  width: var(--width); */
   height: 80px;
   background-image: url('images/ext-bkg.jpg');
   background-size: var(--width) 80px;
@@ -67,15 +55,18 @@ main {
   font-weight: normal;
   font-size: 16px;
   line-height: 24px;
+  color: #1b1b26;
   min-height: 62px;
+}
+
+.page {
+  display: none;
+  margin-bottom: 20px;
 }
 
 .not-a-regular-page {
   margin: 30px 0 20px;
   min-height: 62px;
-  font-family: OpenSans;
-  font-style: normal;
-  font-weight: normal;
   font-size: 16px;
   line-height: 26px;
   display: none;
@@ -85,13 +76,9 @@ main {
   background: red;
   color: white;
   padding: 10px;
-  margin-top: 40px;
   margin-bottom: 10px;
   display: none;
 
-  font-family: OpenSans;
-  font-style: normal;
-  font-weight: normal;
   font-size: 16px;
   line-height: 24px;
 
@@ -106,9 +93,6 @@ main {
   margin: 18px 40px;
   min-height: 62px;
   width: 320px;
-  font-family: OpenSans;
-  font-style: normal;
-  font-weight: normal;
   font-size: 16px;
   line-height: 22px;
   display: none;
@@ -119,7 +103,6 @@ main {
 }
 
 .found-entry {
-  font-family: OpenSans;
   background-color: rgba(27, 27, 38, 0.1);
   margin-bottom: 2px;
   padding-top: 5px;
@@ -188,43 +171,26 @@ main {
   font-size: 18px;
 }
 
-
-/*
-.found-entry:hover {
-  background-color: rgba(27, 27, 38, 0.05);
-}
-  */
-
 .found-title {
-  font-family: OpenSans;
-  font-style: normal;
-  font-weight: normal;
   font-size: 18px;
   line-height: 25px;
   margin-bottom: 4px;
-  color: #1b1b26;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .found-safe {
-  font-family: OpenSans;
   font-style: italic;
-  font-weight: normal;
   font-size: 14px;
   line-height: 19px;
-  color: #1b1b26;
 }
 
 .found-totp {
 
   display: flex;
   position: relative;
-  color: #1b1b26;
 
-  font-family: OpenSans;
-  font-weight: normal;
   font-size: 18px;
   line-height: 27px;
 
@@ -252,7 +218,6 @@ svg circle {
   stroke-dashoffset: 0;
   transition: stroke-dashoffset 1s linear;
   stroke: #aaa;
-  /*  stroke-width: 20; */
 }
 
 svg circle.otp-dial {
@@ -260,9 +225,6 @@ svg circle.otp-dial {
 }
 
 .found-username {
-  font-family: OpenSans;
-  font-style: normal;
-  font-weight: normal;
   font-size: 14px;
   line-height: 19px;
   color: #8d8d94;
@@ -336,6 +298,7 @@ svg circle.otp-dial {
   margin: 0 0 10px 0;
   font-size: 16px;
   font-family: OpenSansBold;
+  display: none;
 }
 
 .login-page {
@@ -348,10 +311,6 @@ svg circle.otp-dial {
 
   margin-left: 2px;
   margin-top: 18px;
-  font-family: OpenSans;
-  font-style: normal;
-  font-weight: normal;
   font-size: 16px;
   line-height: 22px;
-  color: #1b1b26;
 }

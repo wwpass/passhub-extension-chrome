@@ -9,52 +9,51 @@
 </head>
 
 <body>
-  <div class="container">
+
+  <header>
+    <div>
+      <img src="images/passhub_logo.svg">
+      <div style="display: flex; margin-top: 37px;">
+
+        <div title="Show passwords">
+
+          <svg id='password-icon' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"
+            style="width: 24px; height:24px; cursor: pointer">
+            <path
+              d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8m4-3a3 3 0 1 0 2.712 4.285A.5.5 0 0 1 7.163 9h.63l.853-.854a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.793-.793-1-1h-6.63a.5.5 0 0 1-.451-.285A3 3 0 0 0 4 5" />
+            <path d="M4 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+          </svg>
+        </div>
+
+        <div title="Show credit cards">
+          <svg id="credit-card" xmlns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
+            <path
+              d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
+          </svg>
+
+        </div>
+
+        <div class="help"></div>
+        <div class="close-popup"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
     <div id="modal-mask">
     </div>
 
-    <header>
-      <div>
-        <img src="images/passhub_logo.svg">
-        <div style="display: flex; margin-top: 37px;">
-
-          <div title="Show passwords">
-
-            <svg id='password-icon' xmlns="http://www.w3.org/2000/svg" class="passwords-icon" viewBox="0 0 16 16"
-              style="width: 24px; height:24px; cursor: pointer">
-              <title>Show passwords</title>
-
-              <path
-                d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8m4-3a3 3 0 1 0 2.712 4.285A.5.5 0 0 1 7.163 9h.63l.853-.854a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.793-.793-1-1h-6.63a.5.5 0 0 1-.451-.285A3 3 0 0 0 4 5" />
-              <path d="M4 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
-            </svg>
-          </div>
-
-          <div title="Show credit cards">
-            <svg id="credit-card" xmlns="http://www.w3.org/2000/svg" viewBox="0 1 24 24">
-              <path
-                d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
-            </svg>
-
-          </div>
-
-          <div class="help"></div>
-          <div class="close-popup"></div>
-        </div>
-      </div>
-    </header>
-
-    <main>
-      <div class="page login-page">
-        <div id="passhub-link" style="
+    <div class="page login-page">
+      <div id="passhub-link" style="
           display: flex;
           margin-left: 0;
           margin-top: 29px;
           cursor: pointer;
         ">
-          <img src="images/login.svg" />
-          <div style="margin-left: 20px;">
-            <span style="
+        <img src="images/login.svg" />
+        <div style="margin-left: 20px;">
+          <span style="
               font-family: OpenSans;
               font-style: normal;
               font-weight: normal;
@@ -62,9 +61,9 @@
               line-height: 22px;
               color: #1b1b26;
             ">
-              Please sign in to
-            </span>
-            <span style="
+            Please sign in to
+          </span>
+          <span style="
               color: #31ba68;
               font-family: OpenSansBold;
               font-style: normal;
@@ -72,69 +71,60 @@
               font-size: 15.5px;
               line-height: 21px;
             ">
-              PassHub.net
+            PassHub.net
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="page not-a-regular-page">
+      <span id="not-a-regular-page-text">Not a regular page</span><br>
+      <span id="not-a-regular-page-url" style="font-family: OpenSansBold;">
+        XXX
+      </span>
+    </div>
+
+    <div class="page not-found-page">
+      <div style="display: flex;">
+        <img src="images/search.svg" />
+        <div style="margin-left: 22px; overflow: hidden; text-overflow: ellipsis;">
+          <div id="not-found-payment-card" style="display:none">
+            No payment card records<br> in your PassHub account
+          </div>
+          <div id="not-found-password" style="display:none">
+            No suitable accounts found for <br />
+            <span id="not-found-hostname" style="font-family: OpenSansBold;">
+              XXX
             </span>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="page not-a-regular-page">
-        <span id="not-a-regular-page-text">Not a regular page</span><br>
-        <span id="not-a-regular-page-url" style="font-family: OpenSansBold;">
+    <div class="page advice-page">
+      <div id="danger-http">
+        <span>Danger: </span> unsecured http page, proceed at your own risk.
+      </div>
+
+      <div id="paygate">
+        <div style="font-size: 14px; line-height: 22px;">
+          The site payment platform
+        </div>
+        <div id="paygate-url" style="font-family: OpenSansBold;">
           XXX
-        </span>
-      </div>
-
-      <div class="page not-found-page">
-        <div style="display: flex;">
-          <img src="images/search.svg" />
-          <div style="margin-left: 22px; overflow: hidden; text-overflow: ellipsis;">
-            <div id="not-found-payment-card" style="display:none">
-              No payment card records<br> in your PassHub account
-            </div>
-            <div id="not-found-password" style="display:none">
-              No suitable accounts found for <br />
-              <span id="not-found-hostname" style="font-family: OpenSansBold;">
-                XXX
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div class="page advice-page">
-        <div id="danger-http">
-          <span>Danger: </span> unsecured http page, proceed at your own risk.
-        </div>
-
-        <div id="paygate">
-          <div style="font-size: 14px; line-height: 22px;">
-            The site payment platform
-          </div>
-          <div id="paygate-url" style="font-family: OpenSansBold;">
-            XXX
-          </div>
-        </div>
-
-        <div id="advice-list">
-        </div>
-
+      <div id="advice-list">
       </div>
 
-      <div style=" text-align: center;">
-        <span id="server-name-element" style="cursor:pointer">passhub.net</a>
-      </div>
+    </div>
 
-    </main>
-  </div>
-  <!--
-  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-    <symbol id='credit_card' viewBox="0 1 24 24">
-      <path
-        d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
-    </symbol>
-  </svg>
--->
+    <div style=" text-align: center;">
+      <span id="server-name-element" style="cursor:pointer">passhub.net</span>
+    </div>
+
+  </main>
   <script src="popup.js"></script>
 </body>
 
