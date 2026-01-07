@@ -1,7 +1,7 @@
 // GPL: https://github.com/passff/passff
 
-// const consoleLog = console.log;
-const consoleLog = () => { };
+const consoleLog = console.log;
+//const consoleLog = () => { };
 
 function fireEvent(el, name) {
   el.dispatchEvent(
@@ -41,7 +41,7 @@ function initFillCredentials() {
 
 function isTotpCandidate(input) {
   const autocomplete = input.getAttribute('autocomplete');
-  if (autocomplete == "one-time-code") {
+  if (autocomplete === "one-time-code") {
     return true;
   }
 
@@ -57,10 +57,10 @@ function isUsernameCandidate(input) {
     return false;
   }
 
-  if ("id" in input && input.id.toLowerCase() == "password") {
+  if ("id" in input && input.id.toLowerCase() === "password") {
     return false;
   }
-  if ("id" in input && input.id.toLowerCase() == "captcha") {
+  if ("id" in input && input.id.toLowerCase() === "captcha") {
     return false;
   }
 
@@ -82,39 +82,29 @@ function findAllInputs() {
 
   const inputs = []
 
-  function greet1(r) {
-    console.log(r)
-    const x = []
+  function digShadowRoots(r) {
+    consoleLog(r);
+    // const x = [];
     const all = r.querySelectorAll('*');
 
     all.forEach(e => {
       if (e.shadowRoot && e.shadowRoot.mode === 'open') {
-        console.log('element with shadowERoot')
-        console.log(e)
-        x.push(e);
+        consoleLog('element with shadowRoot')
+        consoleLog(e)
+        // x.push(e);
         const allInputs = e.shadowRoot.querySelectorAll('input')
         allInputs.forEach(i => inputs.push(i))
-        greet1(e.shadowRoot)
+        digShadowRoots(e.shadowRoot)
       }
     })
   }
 
   document.querySelectorAll('input').forEach(i => inputs.push(i))
 
-  greet1(document)
+  digShadowRoots(document)
 
-  /*    
-      if(inputs.length > 0) {
-  //        console.log('inputs found:')
-  //        console.log(inputs)
-          inputs[0].value = 'xxx'
-      } else {
-          console.log('no inputs found')
-      }
-  */
   return inputs;
 };
-
 
 function fillCredentials(loginData = null) {
   if (!loginData) {
@@ -126,9 +116,7 @@ function fillCredentials(loginData = null) {
 
   let usernameInput = null;
   let passwordInput = null;
-  let frameId = loginData.frameId; // debug
 
-  //  const inputs = document.querySelectorAll('input');
   const inputs = findAllInputs()
 
 
@@ -143,6 +131,7 @@ function fillCredentials(loginData = null) {
   }
 
   /*  
+  let frameId = loginData.frameId; // debug
   
     if (frameId != 0) {
       consoleLog('frameId');
@@ -216,13 +205,6 @@ function fillCredentials(loginData = null) {
       if (usernameInput && passwordInput) {
         break;
       }
-
-      /*
-            if (usernameInput || passwordInput) {
-              break;
-            }
-      */
-
     }
   }
 
