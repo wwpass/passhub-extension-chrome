@@ -5,8 +5,8 @@ Why do we need PasshubTabScript? - because an extension can only send messages t
 
 */
 
-const consoleLog = console.log;
-// const consoleLog = () => { };
+// const consoleLog = console.log;
+const consoleLog = () => { };
 
 consoleLog('passhubTabScript start');
 
@@ -17,6 +17,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     consoleLog(sender);
 
     if (message.id === 'request to send') {
+        sendResponse({ farewell: "passhubTabScript goodbye" });
         if (("version" in message) && message.version > 1) {
             consoleLog("passhubTabScript: an event created");
             const event = new Event("rts");
@@ -25,6 +26,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             consoleLog("passhubTabScript: a message is posted");
             window.postMessage(message, message.origin);
         }
+        return;
     }
     sendResponse({ farewell: "passhubTabScript goodbye" });
 });

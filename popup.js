@@ -1,11 +1,12 @@
-/*
+
 const consoleLog = () => { };
 const windowClose = window.close;
-*/
 
+/*
 // Debug mode:
 const consoleLog = console.log;
 const windowClose = () => { consoleLog('xxx') };
+*/
 
 let activeTab = null;
 

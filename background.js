@@ -1,7 +1,7 @@
 'use strict';
 
-const consoleLog = console.log;
-// const consoleLog = () => { };
+// const consoleLog = console.log;
+const consoleLog = () => { };
 
 let farewellCount = 0;
 
@@ -20,6 +20,9 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   consoleLog(request);
 
   if (request.id == 'clear to send') {
+    if (!deferredMsg) {
+      consoleLog('error deferredMsg absent');  // happens from time to time... 
+    }
     sendResponse(deferredMsg);
     farewellCount++;
     return;
@@ -43,6 +46,10 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
               .then(response => {
                 consoleLog('bg got response from content script');
                 consoleLog(response);
+              })
+              .catch(err => {
+                consoleLog('catch 48');
+                consoleLog(err);
               })
           });
       })
@@ -72,10 +79,13 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
     const originUrl = new URL(sender.origin);
 
     request.passhubInstance = originUrl.hostname;
-    chrome.runtime.sendMessage(request);
+    chrome.runtime.sendMessage(request)
+      .catch(err => {
+        consoleLog('catch 81');
+        consoleLog(err);
+      })
     sendResponse({ farewell: `goodbye ${request.id} ${farewellCount}` });
     farewellCount++;
-
   } else {
     sendResponse({ farewell: `goodbye ${request.id} ${farewellCount}` });
     farewellCount++;
@@ -86,6 +96,10 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
 function notConnected() {
   chrome.runtime.sendMessage({ id: 'not connected' })
     .then(response => consoleLog(response))
+    .catch(err => {
+      consoleLog('catch 98');
+      consoleLog(err);
+    })
 }
 
 chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
@@ -101,12 +115,18 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
       if (!passhubWindow.passhub) {
         notConnected();
       } else {
-        chrome.tabs.sendMessage(passhubWindow.passhub.tab.id, { id: "request to send", origin: passhubWindow.passhub.origin, version: ("version" in passhubWindow) ? passhubWindow.version : 1 })
+        chrome.tabs.sendMessage(passhubWindow.passhub.peer.tab.id, {
+          id: "request to send",
+          origin: passhubWindow.passhub.origin,
+          version: ("version" in passhubWindow.passhub) ? passhubWindow.passhub.version : 1
+        })
           .then(response => {
             consoleLog('response to rts');
             consoleLog(response);
             if (response.farewell.includes('passhubTabScript')) {
               deferredMsg = popupMessage;
+              consoleLog('deferredMsg set to');
+              consoleLog(popupMessage);
             } else {
               notConnected();
             }
@@ -121,7 +141,7 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
 function injectionOnInstall() {
   const event = new Event("passhubExtInstalled");
   document.dispatchEvent(event);
-  consoleLog("extension installed");
+  console.log("extension installed");
 }
 
 chrome.runtime.onInstalled.addListener(() => {
