@@ -1,16 +1,32 @@
-//const consoleLog = console.log;
+
+/*
+
+Why do we need PasshubTabScript? - because an extension can only send messages to the contentscripts, not to the web page itself
+
+*/
+
+// const consoleLog = console.log;
 const consoleLog = () => { };
 
-consoleLog('passhubTabSript start');
+consoleLog('passhubTabScript start');
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    consoleLog('message');
+    consoleLog('passhubTabScript: message');
     consoleLog(message);
-    consoleLog('sender');
+    consoleLog('passhubTabScript:  sender');
     consoleLog(sender);
 
     if (message.id === 'request to send') {
-        window.postMessage(message, message.origin);
+        sendResponse({ farewell: "passhubTabScript goodbye" });
+        if (("version" in message) && message.version > 1) {
+            consoleLog("passhubTabScript: an event created");
+            const event = new Event("rts");
+            document.dispatchEvent(event);
+        } else {
+            consoleLog("passhubTabScript: a message is posted");
+            window.postMessage(message, message.origin);
+        }
+        return;
     }
     sendResponse({ farewell: "passhubTabScript goodbye" });
 });

@@ -3,15 +3,9 @@
 // const consoleLog = console.log;
 const consoleLog = () => { };
 
-let connected = false;
-let passhubPort = null;
-let passhubInstance = '';
-
 let farewellCount = 0;
 
-
 let deferredMsg = null;
-
 
 function logtime() {
   const today = new Date();
@@ -26,6 +20,9 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   consoleLog(request);
 
   if (request.id == 'clear to send') {
+    if (!deferredMsg) {
+      consoleLog('error deferredMsg absent');  // happens from time to time... 
+    }
     sendResponse(deferredMsg);
     farewellCount++;
     return;
@@ -50,6 +47,10 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
                 consoleLog('bg got response from content script');
                 consoleLog(response);
               })
+              .catch(err => {
+                consoleLog('catch 48');
+                consoleLog(err);
+              })
           });
       })
       .catch(err => {
@@ -59,7 +60,9 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
 
   } else if (request.id == 'remember me') {
     // sent by passhub tab just after signin, the passhub tab is saved for future communications
-    chrome.storage.session.set({ passhub: sender });
+
+    chrome.storage.session.set({ passhub: { peer: sender, version: ("version" in request) ? request.version : 1 } });
+    sendResponse({ id: "63 Ok" });
 
     chrome.scripting.executeScript({
       target: { tabId: sender.tab.id },
@@ -68,7 +71,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
       .then((injectionResult) => {
         consoleLog('passhubTabScript InjectionResult');
         consoleLog(injectionResult);
-        sendResponse({ id: "Ok" });
+        //        sendResponse({ id: "Ok" });
       })
   } else if ((request.id == 'advise') || (request.id == 'payment')) {
     // sent by passhub tab as a response containing data, retransmitted to popup
@@ -76,55 +79,27 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
     const originUrl = new URL(sender.origin);
 
     request.passhubInstance = originUrl.hostname;
-    chrome.runtime.sendMessage(request);
+    chrome.runtime.sendMessage(request)
+      .catch(err => {
+        consoleLog('catch 81');
+        consoleLog(err);
+      })
     sendResponse({ farewell: `goodbye ${request.id} ${farewellCount}` });
     farewellCount++;
-
   } else {
     sendResponse({ farewell: `goodbye ${request.id} ${farewellCount}` });
     farewellCount++;
   }
 });
 
-// permanent external connection created by passhub tab, identified by port (passhubPort), backward compatibility 
 
-chrome.runtime.onConnectExternal.addListener((port) => {
-  passhubPort = port;
-  connected = true;
-  consoleLog(`connected: ${passhubPort.sender.origin}`);
-  const originUrl = new URL(passhubPort.sender.origin);
-
-  passhubInstance = originUrl.hostname;
-
-  consoleLog(passhubPort);
-
-  passhubPort.onDisconnect.addListener((prt) => {
-    consoleLog(logtime());
-    consoleLog(`disconnected ${prt.sender.origin}`);
-    passhubInstance = '';
-    connected = false;
-  });
-});
-
-
-// messages sent by popup, retransmitted to passhub window via permanent external connection (payment page/not a payment page)
-
-function fallBackToConnection(message) {
-  try {
-    if (!connected) {
-      chrome.runtime.sendMessage({ id: 'not connected' })
-        .then(response => consoleLog(response))
-    } else {
-      // sendResponseFunction({ id: 'wait' });
-      passhubPort.postMessage(message);
-    }
-  }
-  catch (err) {
-    consoleLog('catch 73');
-    consoleLog(err);
-    consoleLog('passhubPort');
-    consoleLog(passhubPort);
-  }
+function notConnected() {
+  chrome.runtime.sendMessage({ id: 'not connected' })
+    .then(response => consoleLog(response))
+    .catch(err => {
+      consoleLog('catch 98');
+      consoleLog(err);
+    })
 }
 
 chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
@@ -138,20 +113,26 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
       consoleLog("session storage returns");
       consoleLog(passhubWindow);
       if (!passhubWindow.passhub) {
-        fallBackToConnection(popupMessage);
+        notConnected();
       } else {
-        chrome.tabs.sendMessage(passhubWindow.passhub.tab.id, { id: "request to send", origin: passhubWindow.passhub.origin })
+        chrome.tabs.sendMessage(passhubWindow.passhub.peer.tab.id, {
+          id: "request to send",
+          origin: passhubWindow.passhub.origin,
+          version: ("version" in passhubWindow.passhub) ? passhubWindow.passhub.version : 1
+        })
           .then(response => {
             consoleLog('response to rts');
             consoleLog(response);
             if (response.farewell.includes('passhubTabScript')) {
               deferredMsg = popupMessage;
+              consoleLog('deferredMsg set to');
+              consoleLog(popupMessage);
             } else {
-              fallBackToConnection(popupMessage);
+              notConnected();
             }
           })
           .catch(err => {
-            fallBackToConnection(popupMessage);
+            notConnected();
           })
       }
     })
@@ -160,7 +141,7 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
 function injectionOnInstall() {
   const event = new Event("passhubExtInstalled");
   document.dispatchEvent(event);
-  consoleLog("extension installed");
+  console.log("extension installed");
 }
 
 chrome.runtime.onInstalled.addListener(() => {

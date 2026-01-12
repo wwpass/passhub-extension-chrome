@@ -1,9 +1,12 @@
-// const consoleLog = () => { };
+
+const consoleLog = () => { };
 const windowClose = window.close;
 
+/*
 // Debug mode:
 const consoleLog = console.log;
-// const windowClose = () => { consoleLog('xxx') };
+const windowClose = () => { consoleLog('xxx') };
+*/
 
 let activeTab = null;
 
@@ -505,17 +508,7 @@ function renderAccounts(message) {
   }
 
   const adviceListDiv = document.querySelector('#advice-list');
-  adviceListDiv.innerHTML = `<div style="
-            font-family: OpenSansBold;
-            font-style: normal;
-            font-weight: bold;
-            font-size: 14px;
-            line-height: 19px;
-            color: #1b1b26;
-            margin-bottom: 9px;
-          ">
-        Found:
-      </div>`;
+  adviceListDiv.replaceChildren() // clean-up the div (hiding errors - there should be nothing.. :)
 
   try {
     for (let i = 0; i < foundRecords.length; i++) {
@@ -625,6 +618,7 @@ function activatePassHubTab(passhubHost = "passhub.net") {
         let url = new URL(tab.url);
         if (url.host == passhubHost) {
           chrome.tabs.update(tab.id, { active: true });
+          window.close();
           return;
         }
       }
