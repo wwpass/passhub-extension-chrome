@@ -16,8 +16,17 @@
     "http://*/"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": [
+          "https://*/",
+          "http://localhost:8080/*"],
+      "js": ["contentScript.js"]
+    }
+  ],
   "externally_connectable": {
     "matches": [
       "https://*.passhub.net/*",

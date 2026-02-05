@@ -1,88 +1,98 @@
 'use strict';
 
-// const consoleLog = console.log;
-const consoleLog = () => { };
+import { ensureReturnsResolved, ensureTabIsLoaded, createLogger, safeHostname, generateCid, fmtCid } from './common.js';
+
+const log = createLogger('background');
 
 let farewellCount = 0;
 
 let deferredMsg = null;
 
-function logtime() {
-  const today = new Date();
-  return today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds() + " ";
-}
+log.info('[AUTH] Service worker started');
 
-consoleLog(logtime() + 'passhub extension background start');
+//messages from externally connectables (= passhub tab)
+browser.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
 
-//messages from externally connectables (= passhub tab) 
-chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
-  consoleLog(`external message from passhub window/ request from ${sender.url}`);
-  consoleLog(request);
+  // Use existing _cid from request or generate new one
+  const cid = request._cid || generateCid();
+  const C = fmtCid(cid);  // "[a7f3]" or ""
+
+  log.debug(`[MSG] ${C} ← PassHub: ${request.id} from ${safeHostname(sender.url)}`);
 
   if (request.id == 'clear to send') {
     if (!deferredMsg) {
-      consoleLog('error deferredMsg absent');  // happens from time to time... 
+      log.warn(`[MSG] ${C} ⚠ Deferred message pending, requesting retry`);
+      sendResponse({ status: 'retry', reason: 'deferred_message_pending' });
+      return;
     }
-    sendResponse(deferredMsg);
+    const msg = deferredMsg;
+    deferredMsg = null;  // Clear after sending to prevent stale data
+    log.debug(`[MSG] ${fmtCid(msg._cid)} → Sending deferred: ${msg.id}`);
+    sendResponse(msg);
     farewellCount++;
     return;
   }
 
   if (request.id == 'loginRequest') {
     // sent by passhub tab when user clicks on the URL link of password record, forward to the target URL
-    chrome.tabs.create({ url: request.url })
+    sendResponse({ id: "Ok" });  // Critical for Safari - must respond before async operations
+    browser.tabs.create({ url: request.url })
       .then(tab => {
-        consoleLog('tab created');
-        consoleLog(tab);
+        log.debug(`[TAB] ${C} Created tab ${tab.id} for ${safeHostname(request.url)}`);
 
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['contentScript.js']
-        })
-          .then((injectionResult) => {
-            consoleLog('inJectionResult');
-            consoleLog(injectionResult);
-            chrome.tabs.sendMessage(tab.id, request)
-              .then(response => {
-                consoleLog('bg got response from content script');
-                consoleLog(response);
-              })
-              .catch(err => {
-                consoleLog('catch 48');
-                consoleLog(err);
-              })
-          });
+        // Wait for tab to fully load before injecting script (important for Safari)
+        ensureTabIsLoaded(tab)
+          .then(() => {
+          browser.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['contentScript.js']
+          })
+            .then((injectionResult) => {
+              log.debug(`[INJECT] ${C} ✓ ContentScript injected into tab ${tab.id}`);
+              // Add _cid to request before sending to contentScript
+              browser.tabs.sendMessage(tab.id, { ...request, _cid: cid })
+                .then(response => {
+                  log.debug(`[FILL] ${C} ← ContentScript confirmed`);
+                })
+                .catch(err => {
+                  log.error(`[FILL] ${C} ✗ Failed to send to tab ${tab.id}: ${err.message}`);
+                })
+            });
+        }).catch(err => {
+          log.error(`[TAB] ${C} ✗ Load timeout for tab ${tab.id}`);
+        });
       })
       .catch(err => {
-        consoleLog('catch 42');
-        consoleLog(err);
+        log.error(`[TAB] ${C} ✗ Create failed: ${err.message}`);
       })
 
   } else if (request.id == 'remember me') {
     // sent by passhub tab just after signin, the passhub tab is saved for future communications
 
-    chrome.storage.session.set({ passhub: { peer: sender, version: ("version" in request) ? request.version : 1 } });
+    browser.storage.session.set({ passhub: { peer: sender, version: ("version" in request) ? request.version : 1 } });
     sendResponse({ id: "63 Ok" });
 
-    chrome.scripting.executeScript({
+    let returns = browser.scripting.executeScript({
       target: { tabId: sender.tab.id },
       files: ['passhubTabScript.js']
+    });
+
+    // Wait for script injection to complete (important for Safari)
+    ensureReturnsResolved(returns).then(() => {
+      log.debug('[INJECT] ✓ PasshubTabScript ready');
+    }).catch(err => {
+      log.error(`[INJECT] ✗ PasshubTabScript timeout for tab ${sender.tab.id}`);
     })
-      .then((injectionResult) => {
-        consoleLog('passhubTabScript InjectionResult');
-        consoleLog(injectionResult);
-        //        sendResponse({ id: "Ok" });
-      })
   } else if ((request.id == 'advise') || (request.id == 'payment')) {
     // sent by passhub tab as a response containing data, retransmitted to popup
 
     const originUrl = new URL(sender.origin);
 
     request.passhubInstance = originUrl.hostname;
-    chrome.runtime.sendMessage(request)
+    // Preserve _cid when relaying to popup
+    browser.runtime.sendMessage({ ...request, _cid: cid })
       .catch(err => {
-        consoleLog('catch 81');
-        consoleLog(err);
+        log.error(`[MSG] ${C} ✗ Relay to popup failed: ${err.message}`);
       })
     sendResponse({ farewell: `goodbye ${request.id} ${farewellCount}` });
     farewellCount++;
@@ -94,44 +104,48 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
 
 
 function notConnected() {
-  chrome.runtime.sendMessage({ id: 'not connected' })
-    .then(response => consoleLog(response))
+  log.info('[AUTH] PassHub not connected');
+  browser.runtime.sendMessage({ id: 'not connected' })
+    .then(response => log.debug('[MSG] → Notified popup: not connected'))
     .catch(err => {
-      consoleLog('catch 98');
-      consoleLog(err);
+      log.error(`[MSG] ✗ Failed to notify popup: ${err.message}`);
     })
 }
 
-chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
-  consoleLog("bg got (popup) message");
-  consoleLog(popupMessage);
+browser.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
+
+  // Generate _cid for popup-initiated requests
+  const cid = popupMessage._cid || generateCid();
+  const C = fmtCid(cid);
+
+  log.debug(`[MSG] ${C} ← Popup: ${popupMessage.id}`);
 
   sendResponse({ status: 'wait' });
 
-  chrome.storage.session.get("passhub")
+  browser.storage.session.get("passhub")
     .then(passhubWindow => {
-      consoleLog("session storage returns");
-      consoleLog(passhubWindow);
+      log.debug(`[AUTH] ${C} Session storage check:`, { connected: !!passhubWindow.passhub });
       if (!passhubWindow.passhub) {
         notConnected();
       } else {
-        chrome.tabs.sendMessage(passhubWindow.passhub.peer.tab.id, {
+        browser.tabs.sendMessage(passhubWindow.passhub.peer.tab.id, {
           id: "request to send",
           origin: passhubWindow.passhub.origin,
-          version: ("version" in passhubWindow.passhub) ? passhubWindow.passhub.version : 1
+          version: ("version" in passhubWindow.passhub) ? passhubWindow.passhub.version : 1,
+          _cid: cid  // Pass _cid to passhubTabScript
         })
           .then(response => {
-            consoleLog('response to rts');
-            consoleLog(response);
+            log.debug(`[MSG] ${C} ← PasshubTabScript: ${response.farewell}`);
             if (response.farewell.includes('passhubTabScript')) {
-              deferredMsg = popupMessage;
-              consoleLog('deferredMsg set to');
-              consoleLog(popupMessage);
+              // Store message with _cid for later retrieval
+              deferredMsg = { ...popupMessage, _cid: cid };
+              log.debug(`[MSG] ${C} Deferred message set: ${popupMessage.id}`);
             } else {
               notConnected();
             }
           })
           .catch(err => {
+            log.error(`[MSG] ${C} ✗ Request to send failed: ${err.message}`);
             notConnected();
           })
       }
@@ -144,21 +158,21 @@ function injectionOnInstall() {
   console.log("extension installed");
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  const manifest = chrome.runtime.getManifest();
+browser.runtime.onInstalled.addListener(() => {
+  log.info('[AUTH] Extension installed/updated');
+  const manifest = browser.runtime.getManifest();
   const urlList = manifest.externally_connectable.matches;
 
-  chrome.tabs.query({ url: urlList }, function (passHubTabs) {
+  browser.tabs.query({ url: urlList }, function (passHubTabs) {
     if (passHubTabs && passHubTabs.length) {
       const tabId = passHubTabs[0].id;
 
-      chrome.scripting.executeScript({
+      browser.scripting.executeScript({
         target: { tabId: tabId },
         func: injectionOnInstall,
       })
         .catch(err => {
-          consoleLog('catch 107');
-          consoleLog(err)
+          log.error(`[INJECT] ✗ Install script failed for tab ${tabId}: ${err.message}`);
         })
     }
   });
