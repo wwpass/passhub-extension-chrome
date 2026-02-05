@@ -21,7 +21,7 @@ export const LOG_LEVEL = {
 };
 
 // Set to LOG_LEVEL.NONE for production
-let currentLogLevel = LOG_LEVEL.DEBUG;
+let currentLogLevel = LOG_LEVEL.NONE;
 
 export function setLogLevel(level) {
   currentLogLevel = level;

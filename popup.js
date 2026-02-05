@@ -4,7 +4,7 @@ const log = createLogger('popup');
 const windowClose = window.close;
 
 // Uncomment to disable logging in production:
-// setLogLevel(LOG_LEVEL.NONE);
+setLogLevel(LOG_LEVEL.NONE);
 
 log.info('[AUTH] Popup opened');
 

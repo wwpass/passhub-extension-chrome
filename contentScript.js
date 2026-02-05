@@ -7,7 +7,7 @@ if (typeof browser === "undefined") {
 
 // Inline logger (content scripts can't use ES module imports)
 // Uses getters + bind() to preserve clickable source links in DevTools
-const LOG_ENABLED = true;  // Set to false for production
+const LOG_ENABLED = false;  // Set to false for production
 const log = (() => {
   const formatTime = () => {
     const d = new Date();
