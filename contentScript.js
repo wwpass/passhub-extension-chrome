@@ -4,7 +4,33 @@
 if (typeof browser === "undefined") {
   var browser = chrome;
 }
-const consoleLog = () => { };
+
+// Inline logger (content scripts can't use ES module imports)
+// Uses getters + bind() to preserve clickable source links in DevTools
+const LOG_ENABLED = true;  // Set to false for production
+const log = (() => {
+  const formatTime = () => {
+    const d = new Date();
+    const pad2 = n => n.toString().padStart(2, '0');
+    const pad3 = n => n.toString().padStart(3, '0');
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${pad3(d.getMilliseconds())}`;
+  };
+  const noop = () => {};
+  const bind = (level) => console.log.bind(console, `[${formatTime()}] [${level}] [contentScript]`);
+  return {
+    get debug() { return LOG_ENABLED ? bind('DEBUG') : noop; },
+    get info()  { return LOG_ENABLED ? bind('INFO')  : noop; },
+    get warn()  { return LOG_ENABLED ? bind('WARN')  : noop; },
+    get error() { return LOG_ENABLED ? bind('ERROR') : noop; },
+  };
+})();
+
+// Inline correlation ID helper (can't import from common.js)
+const fmtCid = (cid) => cid ? `[${cid}]` : '';
+
+// Current correlation ID (set from incoming messages)
+let currentCid = null;
+
 
 function fireEvent(el, name) {
   el.dispatchEvent(
@@ -86,16 +112,14 @@ function findAllInputs() {
   const inputs = []
 
   function digShadowRoots(r) {
-    consoleLog(r);
-    // const x = [];
     const all = r.querySelectorAll('*');
 
     all.forEach(e => {
       if (e.shadowRoot && e.shadowRoot.mode === 'open') {
-        consoleLog('element with shadowRoot')
-        consoleLog(e)
-        // x.push(e);
         const allInputs = e.shadowRoot.querySelectorAll('input')
+        if (allInputs.length > 0) {
+          log.debug('[FILL] Shadow root scan:', { element: e.tagName, inputsFound: allInputs.length });
+        }
         allInputs.forEach(i => inputs.push(i))
         digShadowRoots(e.shadowRoot)
       }
@@ -126,7 +150,7 @@ function fillCredentials(loginData = null) {
   fillCounter++;
 
   if (fillCounter < 100) {
-    consoleLog(inputs.length);
+    log.debug(`[FILL] Form scan attempt ${fillCounter}:`, { inputs: inputs.length });
   } else {
     clearInterval(intervalID);
     intervalID = null;
@@ -137,21 +161,21 @@ function fillCredentials(loginData = null) {
   let frameId = loginData.frameId; // debug
   
     if (frameId != 0) {
-      consoleLog('frameId');
-      consoleLog(frameId);
+      log.debug('frameId');
+      log.debug(frameId);
       let p = document.querySelector("#password-input");
-      consoleLog('password element');
-      consoleLog(document.querySelector("#password-input"));
+      log.debug('password element');
+      log.debug(document.querySelector("#password-input"));
       if (p) {
-        consoleLog('password element found');
+        log.debug('password element found');
         passwordInput = p;
       }
   
       let u = document.querySelector("#userId-input");
-      consoleLog('userId element');
-      consoleLog(document.querySelector("#userId-input"));
+      log.debug('userId element');
+      log.debug(document.querySelector("#userId-input"));
       if (u) {
-        consoleLog('username element found');
+        log.debug('username element found');
         usernameInput = u;
         //      usernameInput.value = loginData.username;
         //      u.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'a' }));
@@ -160,20 +184,17 @@ function fillCredentials(loginData = null) {
       }
   
       const ui = document.querySelector("#userId-input");
-      consoleLog('userId-input');
-      consoleLog(document.querySelector("#userId-input"));
+      log.debug('userId-input');
+      log.debug(document.querySelector("#userId-input"));
       if (ui) {
-        consoleLog('userId-input element found');
+        log.debug('userId-input element found');
       }
   
     }
   */
 
   if (!(usernameInput && passwordInput)) {
-    consoleLog('contentScript: looking for username & password inputs');
     for (let input of inputs) {
-      consoleLog('input');
-      consoleLog(input);
 
       if (input.offsetParent === null) {
         continue;
@@ -212,7 +233,7 @@ function fillCredentials(loginData = null) {
   }
 
   if (usernameInput && passwordInput) {
-    consoleLog('contentScript done: username & password');
+    log.info(`[FILL] ${fmtCid(currentCid)} ✓ Filled username + password`);
     setInputValue(usernameInput, loginData.username);
     setInputValue(passwordInput, loginData.password);
 
@@ -221,7 +242,7 @@ function fillCredentials(loginData = null) {
     return;
   }
   if (passwordInput) {
-    consoleLog('contentScript done: password');
+    log.info(`[FILL] ${fmtCid(currentCid)} ✓ Filled password only`);
     setInputValue(passwordInput, loginData.password);
 
     clearInterval(intervalID);
@@ -238,7 +259,7 @@ function fillCredentials(loginData = null) {
       // do nothing, already set
       return false;
     }
-    consoleLog('contentScript: username only');
+    log.info(`[FILL] ${fmtCid(currentCid)} ✓ Filled username (waiting for password field)`);
     setInputValue(usernameInput, loginData.username);
 
     if (typeof usernameInput.id != 'undefined') {
@@ -250,7 +271,7 @@ function fillCredentials(loginData = null) {
   if (usernameInput == null && passwordInput == null) {
     //    if (fillCounter > 20) {
     if (true) {
-      consoleLog('contentScript nothing found');
+      log.warn(`[FILL] ${fmtCid(currentCid)} ⚠ No login fields found after ${fillCounter} attempts`);
       clearInterval(intervalID);
       intervalID = null;
       return;
@@ -261,7 +282,6 @@ function fillCredentials(loginData = null) {
 function altCardnum() {
   const inputs = document.querySelectorAll('input');
   for (const input of inputs) {
-    consoleLog('input');
     if (input.name.match(/card.{0,1}number|cc_number/i)) {
       return input;
     }
@@ -333,10 +353,12 @@ function altCSC() {
 }
 
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  consoleLog(message);
-  consoleLog(sender.tab ?
-    "from a content script:" + sender.tab.url :
-    "from the extension");
+
+  // Extract _cid from message for correlated logging
+  currentCid = message._cid || null;
+  const C = fmtCid(currentCid);
+
+  log.debug(`[MSG] ${C} ← Received:`, { type: message.id, fromExtension: !sender.tab });
   if (message.id === "loginRequest") {
     initFillCredentials();
 
@@ -345,7 +367,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     /*    
         intervalID = setInterval(() => {
           fillCredentials(message);
-          consoleLog(`fillCounter ${fillCounter}`)
+          log.debug(`fillCounter ${fillCounter}`)
         },
           100);
     */
@@ -368,8 +390,8 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     /*
         if (ccNumber) {
           const paymentStatus = { payment: "payment page" }
-          consoleLog('response 2');
-          consoleLog(paymentStatus);
+          log.debug('response 2');
+          log.debug(paymentStatus);
           sendResponse(paymentStatus);
         }
     */
@@ -378,8 +400,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const ccCSC = document.querySelector('[autocomplete="cc-csc"]');
 
     const paymentStatus = { payment: ((ccNumber != null) || (ccName != null) || (ccCSC != null)) ? "payment page" : "not a payment page" }
-    consoleLog('response 1');
-    consoleLog(paymentStatus);
+    log.debug('[PAYMENT] Page analysis:', paymentStatus);
     sendResponse(paymentStatus);
     return true;
   }

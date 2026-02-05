@@ -6,6 +6,60 @@ if (typeof browser === "undefined") {
 export const consoleLog = console.log;
 // export const consoleLog = () => { };
 
+// Browser API compatibility shim for Safari/Chrome/Edge
+
+// ============================================================
+// Structured Logger
+// ============================================================
+
+export const LOG_LEVEL = {
+  DEBUG: 0,
+  INFO: 1,
+  WARN: 2,
+  ERROR: 3,
+  NONE: 4
+};
+
+// Set to LOG_LEVEL.NONE for production
+let currentLogLevel = LOG_LEVEL.DEBUG;
+
+export function setLogLevel(level) {
+  currentLogLevel = level;
+}
+
+function formatTime() {
+  const d = new Date();
+  const pad2 = n => n.toString().padStart(2, '0');
+  const pad3 = n => n.toString().padStart(3, '0');
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${pad3(d.getMilliseconds())}`;
+}
+
+// Uses getters + bind() to preserve clickable source links in DevTools
+export function createLogger(context) {
+  const noop = () => {};
+  const bind = (level, levelName) =>
+    level >= currentLogLevel
+      ? console.log.bind(console, `[${formatTime()}] [${levelName}] [${context}]`)
+      : noop;
+
+  return {
+    get debug() { return bind(LOG_LEVEL.DEBUG, 'DEBUG'); },
+    get info()  { return bind(LOG_LEVEL.INFO, 'INFO'); },
+    get warn()  { return bind(LOG_LEVEL.WARN, 'WARN'); },
+    get error() { return bind(LOG_LEVEL.ERROR, 'ERROR'); },
+  };
+}
+
+// Log categories for filtering (not used)
+export const LOG_CAT = {
+  MSG: 'MSG',        // Messaging between components
+  INJECT: 'INJECT',  // Script injection
+  FILL: 'FILL',      // Form filling
+  PAYMENT: 'PAYMENT',// Payment flow
+  TAB: 'TAB',        // Tab operations
+  AUTH: 'AUTH',      // Authentication/connection
+};
+
 // Extract hostname safely for logging (privacy + readability)
 export function safeHostname(url) {
   try {

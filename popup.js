@@ -1,13 +1,15 @@
-import { ensureReturnsResolved } from './common.js';
+import { ensureReturnsResolved, createLogger, LOG_LEVEL, setLogLevel, fmtCid, generateCid } from './common.js';
 
-const consoleLog = () => { };
+const log = createLogger('popup');
 const windowClose = window.close;
 
-/*
-// Debug mode:
-const consoleLog = console.log;
-const windowClose = () => { consoleLog('xxx') };
-*/
+// Uncomment to disable logging in production:
+// setLogLevel(LOG_LEVEL.NONE);
+
+log.info('[AUTH] Popup opened');
+
+// Suppress unused import warnings (used in production toggle above)
+void LOG_LEVEL; void setLogLevel;
 
 let activeTab = null;
 
@@ -18,8 +20,11 @@ let paymentFrames = [];
 let paymentStatus = "not a payment page";
 let paymentHost = null;
 
-// all enrties found by passhub.net for the current tab 
+// all enrties found by passhub.net for the current tab
 let foundRecords = [];
+
+// Current correlation ID for this popup session
+let currentCid = generateCid();
 
 function validFramesRemove(frame) {
   validFrames = validFrames.filter(e => e !== frame);
@@ -86,13 +91,12 @@ function gotPaymentStatus(tab, frame, response) {
     browser.runtime.sendMessage({ id: paymentHost ? "payment page" : "not a payment page", url: tab.url, tabId: tab.id, _cid: currentCid })
       .then(bgResponse => {
         const p = document.querySelector('#status-text');
-        if (bgResponse.status == 'not connected') {
+        if (bgResponse && bgResponse.status == 'not connected') {
           notConnected();
         }
       })
       .catch(err => {
-        consoleLog('catch 32');
-        consoleLog(err);
+        log.error(`[PAYMENT] ✗ Status send failed: ${err.message}`);
       })
   }
 }
@@ -135,8 +139,7 @@ function installScript(tab, frame) {
       gotPaymentStatus(tab, frame, response);
     })
     .catch(err => {
-      consoleLog(`catch69 frame: ${frame.frameId}`);
-      consoleLog(err);
+      log.debug(`[INJECT] ContentScript missing in frame ${frame.frameId}, injecting`);
 
       let returns = browser.scripting.executeScript(
         {
@@ -151,14 +154,12 @@ function installScript(tab, frame) {
               gotPaymentStatus(tab, frame, response);
             })
             .catch(err => {
-              consoleLog(`catch70 frame: ${frame.frameId} ${frame.url}`);
-              consoleLog(err);
+              log.warn(`[INJECT] ⚠ Frame ${frame.frameId} unresponsive`);
               gotPaymentStatus(tab, frame, { payment: "not valid frame" });
             })
         })
         .catch(err => {
-          consoleLog(`catch71 frame: ${frame.frameId} ${frame.url}`);
-          consoleLog(err);
+          log.error(`[INJECT] ✗ Failed for frame ${frame.frameId}: ${err.message}`);
           if (frame.frameId == 0) {
             notRegularPage(activeTab.url);
           }
@@ -469,8 +470,7 @@ function renderAccounts(message) {
               }
             })
             .catch(err => {
-              consoleLog('catch 32');
-              consoleLog(err);
+              log.error(`[MSG] ✗ Password request failed: ${err.message}`);
             })
         })
     })
@@ -489,8 +489,7 @@ function renderAccounts(message) {
           }
         })
         .catch(err => {
-          consoleLog('catch 32');
-          consoleLog(err);
+          log.error(`[PAYMENT] ✗ Cards request failed: ${err.message}`);
         })
     })
   }
@@ -519,8 +518,7 @@ function renderAccounts(message) {
       adviceListDiv.appendChild(foundEntry);
     }
   } catch (e) {
-    consoleLog('catch 193');
-    consoleLog(e);
+    log.error(`[FILL] ✗ Render failed: ${e.message}`);
   }
   adviceListDiv.style.display = 'block';
   showPage(".advice-page")
@@ -547,8 +545,7 @@ function advItemClick(e) {
                 windowClose();
               })
               .catch(err => {
-                consoleLog('catched 169');
-                consoleLog(err);
+                log.error(`[PAYMENT] ✗ Fill failed for frame ${frame.frameId}: ${err.message}`);
               })
           }
         }
@@ -576,8 +573,7 @@ function advItemClick(e) {
             windowClose();
           })
           .catch(err => {
-            consoleLog('catched 169');
-            consoleLog(err);
+            log.error(`[FILL] ✗ Login fill failed for frame ${frame.frameId}: ${err.message}`);
           })
       }
     });
@@ -627,8 +623,7 @@ function activatePassHubTab(passhubHost = "passhub.net") {
       window.open(`https://${passhubHost}`, 'target="_blank"');
     })
     .catch(err => {
-      consoleLog('catch 657');
-      consoleLog(err);
+      log.error(`[TAB] ✗ Query passhub tabs failed: ${err.message}`);
     })
 }
 
@@ -645,12 +640,18 @@ document.querySelector('.close-popup').addEventListener('click', (ev) => {
 
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
+  // Use _cid from request or current session
+  const cid = request._cid || currentCid;
+  const C = fmtCid(cid);
+
   if (request.id === "not connected") {
+    log.debug(`[MSG] ${C} ← Background: not connected`);
     sendResponse({ response: 'Bye' })
     notConnected();
   }
 
   if ((request.id === "advise") || (request.id === "payment")) {
+    log.debug(`[MSG] ${C} ← Background: ${request.id} with ${request.found?.length || 0} items`);
     sendResponse({ response: 'Bye' })
     renderAccounts(request);
     return;
@@ -702,8 +703,6 @@ browser.tabs.query({ active: true, currentWindow: true })
         }
       })
       .catch(err => {
-        consoleLog('catch 105');
-        consoleLog(err);
-
+        log.error(`[TAB] ✗ Enumerate frames failed for tab ${activeTab.id}: ${err.message}`);
       })
   });
