@@ -1,3 +1,4 @@
+import { ensureReturnsResolved } from './common.js';
 
 const consoleLog = () => { };
 const windowClose = window.close;
@@ -82,7 +83,7 @@ function gotPaymentStatus(tab, frame, response) {
       paymentHost = paymentUrl.host;
     }
 
-    chrome.runtime.sendMessage({ id: paymentHost ? "payment page" : "not a payment page", url: tab.url, tabId: tab.id })
+    browser.runtime.sendMessage({ id: paymentHost ? "payment page" : "not a payment page", url: tab.url, tabId: tab.id, _cid: currentCid })
       .then(bgResponse => {
         const p = document.querySelector('#status-text');
         if (bgResponse.status == 'not connected') {
@@ -129,7 +130,7 @@ function notRegularPage(url) {
 
 function installScript(tab, frame) {
 
-  chrome.tabs.sendMessage(tab.id, { id: 'payment status' }, { frameId: frame.frameId })
+  browser.tabs.sendMessage(tab.id, { id: 'payment status' }, { frameId: frame.frameId })
     .then(response => {
       gotPaymentStatus(tab, frame, response);
     })
@@ -137,14 +138,15 @@ function installScript(tab, frame) {
       consoleLog(`catch69 frame: ${frame.frameId}`);
       consoleLog(err);
 
-      chrome.scripting.executeScript(
+      let returns = browser.scripting.executeScript(
         {
           target: { tabId: tab.id, frameIds: [frame.frameId] },
           files: ['contentScript.js'],
-        })
-        .then(injectionResult => {
+        });
 
-          chrome.tabs.sendMessage(tab.id, { id: 'payment status' }, { frameId: frame.frameId })
+      ensureReturnsResolved(returns)
+        .then(() => {
+          browser.tabs.sendMessage(tab.id, { id: 'payment status' }, { frameId: frame.frameId })
             .then(response => {
               gotPaymentStatus(tab, frame, response);
             })
@@ -456,13 +458,13 @@ function renderAccounts(message) {
     }
     document.querySelector('#password-icon').addEventListener('click', () => {
 
-      chrome.tabs.query({ active: true, currentWindow: true })
+      browser.tabs.query({ active: true, currentWindow: true })
         .then(tabs => {
 
-          chrome.runtime.sendMessage({ id: "not a payment page", url: tabs[0].url, tabId: tabs[0].id })
+          browser.runtime.sendMessage({ id: "not a payment page", url: tabs[0].url, tabId: tabs[0].id, _cid: currentCid })
             .then(bgResponse => {
               const p = document.querySelector('#status-text');
-              if (bgResponse.status == 'not connected') {
+              if (bgResponse && bgResponse.status == 'not connected') {
                 notConnected();
               }
             })
@@ -479,10 +481,10 @@ function renderAccounts(message) {
     document.querySelector('#credit-card').style.display = 'initial';
     document.querySelector('#credit-card').addEventListener('click', () => {
 
-      chrome.runtime.sendMessage({ id: "payment page" /*, url: tab.url, tabId: tab.id */ })
+      browser.runtime.sendMessage({ id: "payment page", _cid: currentCid /*, url: tab.url, tabId: tab.id */ })
         .then(bgResponse => {
           const p = document.querySelector('#status-text');
-          if (bgResponse.status == 'not connected') {
+          if (bgResponse && bgResponse.status == 'not connected') {
             notConnected();
           }
         })
@@ -527,14 +529,14 @@ function renderAccounts(message) {
 function advItemClick(e) {
   const row = parseInt(this.getAttribute('data-row'));
 
-  chrome.tabs.query({ active: true, currentWindow: true })
+  browser.tabs.query({ active: true, currentWindow: true })
     .then(tabs => {
 
       if (paymentStatus == "payment page") {
         if (paymentHost) {
 
           for (let frame of paymentFrames) {
-            chrome.tabs.sendMessage(
+            browser.tabs.sendMessage(
               tabs[0].id,
               {
                 id: 'card',
@@ -566,7 +568,7 @@ function advItemClick(e) {
           messageToContentScript.totp = foundRecords[row].totp.trim()
         }
 
-        chrome.tabs.sendMessage(
+        browser.tabs.sendMessage(
           tabs[0].id, messageToContentScript,
           { frameId: frame.frameId }
         )
@@ -591,13 +593,13 @@ function showPage(pageSelector) {
 }
 
 function activatePassHubDocTab() {
-  const manifest = chrome.runtime.getManifest();
+  const manifest = browser.runtime.getManifest();
   const urlList = manifest.externally_connectable.matches;
 
-  chrome.tabs.query({ url: urlList, currentWindow: true }, tabs => {
+  browser.tabs.query({ url: urlList, currentWindow: true }, tabs => {
     for (let tab of tabs) {
       if (tab.url.includes('/doc/browser-extension')) {
-        chrome.tabs.update(tab.id, { active: true });
+        browser.tabs.update(tab.id, { active: true });
         return;
       }
     }
@@ -606,10 +608,10 @@ function activatePassHubDocTab() {
 }
 
 function activatePassHubTab(passhubHost = "passhub.net") {
-  const manifest = chrome.runtime.getManifest();
+  const manifest = browser.runtime.getManifest();
   const urlList = manifest.externally_connectable.matches;
 
-  chrome.tabs.query({ url: urlList, currentWindow: true })
+  browser.tabs.query({ url: urlList, currentWindow: true })
     .then(passHubTabs => {
       for (let tab of passHubTabs) {
         if (tab.url.includes('doc')) {
@@ -617,7 +619,7 @@ function activatePassHubTab(passhubHost = "passhub.net") {
         }
         let url = new URL(tab.url);
         if (url.host == passhubHost) {
-          chrome.tabs.update(tab.id, { active: true });
+          browser.tabs.update(tab.id, { active: true });
           window.close();
           return;
         }
@@ -641,8 +643,8 @@ document.querySelector('.close-popup').addEventListener('click', (ev) => {
   window.close()
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  
   if (request.id === "not connected") {
     sendResponse({ response: 'Bye' })
     notConnected();
@@ -655,7 +657,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-chrome.tabs.query({ active: true, currentWindow: true })
+browser.tabs.query({ active: true, currentWindow: true })
   .then(tabs => {
     activeTab = tabs[0];
 
@@ -678,7 +680,7 @@ chrome.tabs.query({ active: true, currentWindow: true })
 
     let mainUrlFrames = [];  // do we need it?
 
-    chrome.webNavigation.getAllFrames({ tabId: activeTab.id })
+    browser.webNavigation.getAllFrames({ tabId: activeTab.id })
       .then(frameList => {
         for (let frame of frameList) {
           let frameURL = new URL(frame.url);

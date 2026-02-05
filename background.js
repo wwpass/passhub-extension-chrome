@@ -1,5 +1,6 @@
 'use strict';
 
+import { ensureReturnsResolved, ensureTabIsLoaded } from './common.js';
 // const consoleLog = console.log;
 const consoleLog = () => { };
 
@@ -14,8 +15,8 @@ function logtime() {
 
 consoleLog(logtime() + 'passhub extension background start');
 
-//messages from externally connectables (= passhub tab) 
-chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+//messages from externally connectables (= passhub tab)
+browser.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
   consoleLog(`external message from passhub window/ request from ${sender.url}`);
   consoleLog(request);
 
@@ -30,28 +31,36 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
 
   if (request.id == 'loginRequest') {
     // sent by passhub tab when user clicks on the URL link of password record, forward to the target URL
-    chrome.tabs.create({ url: request.url })
+    sendResponse({ id: "Ok" });  // Critical for Safari - must respond before async operations
+    browser.tabs.create({ url: request.url })
       .then(tab => {
         consoleLog('tab created');
         consoleLog(tab);
 
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['contentScript.js']
-        })
-          .then((injectionResult) => {
-            consoleLog('inJectionResult');
-            consoleLog(injectionResult);
-            chrome.tabs.sendMessage(tab.id, request)
-              .then(response => {
-                consoleLog('bg got response from content script');
-                consoleLog(response);
-              })
-              .catch(err => {
-                consoleLog('catch 48');
-                consoleLog(err);
-              })
-          });
+        // Wait for tab to fully load before injecting script (important for Safari)
+        ensureTabIsLoaded(tab)
+          .then(() => {
+          browser.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['contentScript.js']
+          })
+            .then((injectionResult) => {
+              consoleLog('inJectionResult');
+              consoleLog(injectionResult);
+              // Add _cid to request before sending to contentScript
+              browser.tabs.sendMessage(tab.id, { ...request, _cid: cid })
+                .then(response => {
+                  consoleLog('bg got response from content script');
+                  consoleLog(response);
+                })
+                .catch(err => {
+                  consoleLog('catch 48');
+                  consoleLog(err);
+                })
+            });
+        }).catch(err => {
+          log.error(`[TAB] ${C} ✗ Load timeout for tab ${tab.id}`);
+        });
       })
       .catch(err => {
         consoleLog('catch 42');
@@ -61,25 +70,26 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
   } else if (request.id == 'remember me') {
     // sent by passhub tab just after signin, the passhub tab is saved for future communications
 
-    chrome.storage.session.set({ passhub: { peer: sender, version: ("version" in request) ? request.version : 1 } });
+    browser.storage.session.set({ passhub: { peer: sender, version: ("version" in request) ? request.version : 1 } });
     sendResponse({ id: "63 Ok" });
 
-    chrome.scripting.executeScript({
+    let returns = browser.scripting.executeScript({
       target: { tabId: sender.tab.id },
       files: ['passhubTabScript.js']
+    });
+
+    // Wait for script injection to complete (important for Safari)
+    ensureReturnsResolved(returns).then(() => {
+    }).catch(err => {
     })
-      .then((injectionResult) => {
-        consoleLog('passhubTabScript InjectionResult');
-        consoleLog(injectionResult);
-        //        sendResponse({ id: "Ok" });
-      })
   } else if ((request.id == 'advise') || (request.id == 'payment')) {
     // sent by passhub tab as a response containing data, retransmitted to popup
 
     const originUrl = new URL(sender.origin);
 
     request.passhubInstance = originUrl.hostname;
-    chrome.runtime.sendMessage(request)
+    // Preserve _cid when relaying to popup
+    browser.runtime.sendMessage({ ...request, _cid: cid })
       .catch(err => {
         consoleLog('catch 81');
         consoleLog(err);
@@ -94,7 +104,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
 
 
 function notConnected() {
-  chrome.runtime.sendMessage({ id: 'not connected' })
+  browser.runtime.sendMessage({ id: 'not connected' })
     .then(response => consoleLog(response))
     .catch(err => {
       consoleLog('catch 98');
@@ -102,20 +112,20 @@ function notConnected() {
     })
 }
 
-chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
   consoleLog("bg got (popup) message");
   consoleLog(popupMessage);
 
   sendResponse({ status: 'wait' });
 
-  chrome.storage.session.get("passhub")
+  browser.storage.session.get("passhub")
     .then(passhubWindow => {
       consoleLog("session storage returns");
       consoleLog(passhubWindow);
       if (!passhubWindow.passhub) {
         notConnected();
       } else {
-        chrome.tabs.sendMessage(passhubWindow.passhub.peer.tab.id, {
+        browser.tabs.sendMessage(passhubWindow.passhub.peer.tab.id, {
           id: "request to send",
           origin: passhubWindow.passhub.origin,
           version: ("version" in passhubWindow.passhub) ? passhubWindow.passhub.version : 1
@@ -144,15 +154,15 @@ function injectionOnInstall() {
   console.log("extension installed");
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  const manifest = chrome.runtime.getManifest();
+browser.runtime.onInstalled.addListener(() => {
+  const manifest = browser.runtime.getManifest();
   const urlList = manifest.externally_connectable.matches;
 
-  chrome.tabs.query({ url: urlList }, function (passHubTabs) {
+  browser.tabs.query({ url: urlList }, function (passHubTabs) {
     if (passHubTabs && passHubTabs.length) {
       const tabId = passHubTabs[0].id;
 
-      chrome.scripting.executeScript({
+      browser.scripting.executeScript({
         target: { tabId: tabId },
         func: injectionOnInstall,
       })

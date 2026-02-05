@@ -5,12 +5,17 @@ Why do we need PasshubTabScript? - because an extension can only send messages t
 
 */
 
+// Chrome/Edge compatibility
+if (typeof browser === "undefined") {
+  var browser = chrome;
+}
+
 // const consoleLog = console.log;
 const consoleLog = () => { };
 
 consoleLog('passhubTabScript start');
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     consoleLog('passhubTabScript: message');
     consoleLog(message);
     consoleLog('passhubTabScript:  sender');

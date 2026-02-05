@@ -329,7 +329,7 @@ function altCSC() {
   return element;
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   consoleLog(message);
   consoleLog(sender.tab ?
     "from a content script:" + sender.tab.url :
@@ -347,13 +347,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           100);
     */
     sendResponse({ farewell: "Ok" });
-    return;
+    return true;
   }
 
   if (message.id === "card") {
     fillCardData(message.card);
     sendResponse({ farewell: "Ok" });
-    return;
+    return true;
   }
 
   if (message.id === "payment status") {
@@ -378,9 +378,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     consoleLog('response 1');
     consoleLog(paymentStatus);
     sendResponse(paymentStatus);
-    return;
+    return true;
   }
   sendResponse({ farewell: "contentScript goodbye" });
+  return true;
 }
 );
 
