@@ -1,6 +1,9 @@
 // GPL: https://github.com/passff/passff
 
-// const consoleLog = console.log;
+// Chrome/Edge compatibility
+if (typeof browser === "undefined") {
+  var browser = chrome;
+}
 const consoleLog = () => { };
 
 function fireEvent(el, name) {
