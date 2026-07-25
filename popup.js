@@ -17,6 +17,8 @@ let paymentFrames = [];
 let paymentStatus = "not a payment page";
 let paymentHost = null;
 
+let addressFrames = [];
+
 // all enrties found by passhub.net for the current tab 
 let foundRecords = [];
 
@@ -26,6 +28,9 @@ function validFramesRemove(frame) {
 
 function notConnected() {
   showPage(".login-page");
+  document.querySelector('#address').style.display = 'none';
+  document.querySelector('#credit-card').style.display = 'none';
+  document.querySelector('#password-icon').style.display = 'none';
 
   browser.storage.local.get("passhubHost")
     .then(data => {
@@ -64,9 +69,19 @@ function notConnected() {
 
 function gotPaymentStatus(tab, frame, response) {
 
+  consoleLog("gotPaymentStatus");
+  consoleLog(response);
   if (response.payment == "payment page") {
     paymentStatus = response.payment;
     paymentFrames.push(frame);
+  }
+
+  if (response.payment == "address page") {
+
+    paymentStatus = response.payment;
+    addressFrames.push(frame);
+    consoleLog("Hello 1");
+    consoleLog(addressFrames);
   }
 
   if (response.payment == "not valid frame") {
@@ -114,7 +129,15 @@ function gotPaymentStatus(tab, frame, response) {
       paymentHost = paymentUrl.host;
     }
 
-    chrome.runtime.sendMessage({ id: paymentHost ? "payment page" : "not a payment page", url: tab.url, tabId: tab.id })
+    let message2backgroundId = "not a payment page";
+    if (paymentHost) {
+      message2backgroundId = "payment page"
+    }
+    if (addressFrames.length) {
+      message2backgroundId = "address page"
+    }
+
+    chrome.runtime.sendMessage({ id: message2backgroundId, url: tab.url, tabId: tab.id })
       .then(bgResponse => {
         const p = document.querySelector('#status-text');
         if (bgResponse.status == 'not connected') {
@@ -156,6 +179,10 @@ function notRegularPage(url) {
   // a page where injectScript fails
   // e.g. about:debugging#/runtime/this-firefox
   showPage(".not-a-regular-page");
+  document.querySelector('#address').style.display = 'none';
+  document.querySelector('#credit-card').style.display = 'none';
+  document.querySelector('#password-icon').style.display = 'none';
+
   document.getElementById('not-a-regular-page-url').innerText = url;
 }
 
@@ -163,6 +190,8 @@ function installScript(tab, frame) {
 
   chrome.tabs.sendMessage(tab.id, { id: 'payment status' }, { frameId: frame.frameId })
     .then(response => {
+      consoleLog("got response");
+      consoleLog(response);
       gotPaymentStatus(tab, frame, response);
     })
     .catch(err => {
@@ -281,6 +310,8 @@ function copyDivEntryClick(ev, fieldName) {
   restoreTitles();
   const foundEntry = ev.target.closest('.found-entry');
   const row = parseInt(foundEntry.getAttribute('data-row'));
+
+
   if (paymentStatus == "payment page") {
     const card = foundRecords[row].card;
     if (fieldName == "cc-name") {
@@ -301,6 +332,26 @@ function copyDivEntryClick(ev, fieldName) {
     }
     if (fieldName == "cc-csc") {
       navigator.clipboard.writeText(card[7].trim())
+    }
+  } else if (paymentStatus == "address page") {
+    const address = foundRecords[row].address;
+    if (fieldName == "street-address1") {
+      navigator.clipboard.writeText(address[3].trim())
+    }
+    if (fieldName == "street-address2") {
+      navigator.clipboard.writeText(address[4].trim())
+    }
+    if (fieldName == "city") {
+      navigator.clipboard.writeText(address[5].trim())
+    }
+    if (fieldName == "state") {
+      navigator.clipboard.writeText(address[6].trim())
+    }
+    if (fieldName == "zip") {
+      navigator.clipboard.writeText(address[7].trim())
+    }
+    if (fieldName == "country") {
+      navigator.clipboard.writeText(address[8].trim())
     }
   } else {
     const field = foundRecords[row][fieldName];
@@ -364,6 +415,56 @@ function renderFoundEntry(entryData, row) {
       copyDivEntryClick(ev, 'cc-exp');
     })
     copyDialog.append(copyCcExp);
+
+  } else if (paymentStatus == "address page") {
+
+    const copyStreetAddress1 = document.createElement('div');
+    copyStreetAddress1.innerHTML = '<span>Copy Street Address 1</span>';
+
+    copyStreetAddress1.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'street-address1');
+    })
+    copyDialog.append(copyStreetAddress1);
+
+    const copyStreetAddress2 = document.createElement('div');
+    copyStreetAddress2.innerHTML = '<span>Copy Street Address 2</span>';
+
+    copyStreetAddress2.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'street-address2');
+    })
+    copyDialog.append(copyStreetAddress2);
+
+    const copyCity = document.createElement('div');
+    copyCity.innerHTML = '<span>Copy City</span>';
+
+    copyCity.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'city');
+    })
+    copyDialog.append(copyCity);
+
+    const copyState = document.createElement('div');
+    copyState.innerHTML = '<span>Copy State</span>';
+
+    copyState.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'state');
+    })
+    copyDialog.append(copyState);
+
+    const copyZip = document.createElement('div');
+    copyZip.innerHTML = '<span>Copy Zip</span>';
+
+    copyZip.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'zip');
+    })
+    copyDialog.append(copyZip);
+
+    const copyCountry = document.createElement('div');
+    copyCountry.innerHTML = '<span>Copy Country</span>';
+
+    copyCountry.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'country');
+    })
+    copyDialog.append(copyCountry);
 
   } else {
     const copyUsername = document.createElement('div');
@@ -456,6 +557,64 @@ function renderFoundEntry(entryData, row) {
   return foundEntry;
 }
 
+
+/*------------------------------------------------*/
+document.querySelector('#password-icon').addEventListener('click', () => {
+
+  chrome.tabs.query({ active: true, currentWindow: true })
+    .then(tabs => {
+
+      chrome.runtime.sendMessage({ id: "not a payment page", url: tabs[0].url, tabId: tabs[0].id })
+        .then(bgResponse => {
+          const p = document.querySelector('#status-text');
+          if (bgResponse.status == 'not connected') {
+            notConnected();
+          }
+        })
+        .catch(err => {
+          consoleLog('catch 32');
+          consoleLog(err);
+        })
+    })
+})
+
+document.querySelector('#credit-card').addEventListener('click', () => {
+
+  chrome.runtime.sendMessage({ id: "payment page" /*, url: tab.url, tabId: tab.id */ })
+    .then(bgResponse => {
+      const p = document.querySelector('#status-text');
+      if (bgResponse.status == 'not connected') {
+        notConnected();
+      }
+    })
+    .catch(err => {
+      consoleLog('catch 32');
+      consoleLog(err);
+    })
+})
+
+
+document.querySelector('#address').addEventListener('click', () => {
+
+  chrome.runtime.sendMessage({ id: "address page" /*, url: tab.url, tabId: tab.id */ })
+    .then(bgResponse => {
+      const p = document.querySelector('#status-text');
+      if (bgResponse.status == 'not connected') {
+        notConnected();
+      }
+    })
+    .catch(err => {
+      consoleLog('catch 32');
+      consoleLog(err);
+    })
+})
+
+
+/*------------------------------------------------*/
+
+
+
+
 function renderAccounts(message) {
 
   const passhubInstanceLink = document.getElementById('server-name-element');
@@ -476,6 +635,7 @@ function renderAccounts(message) {
 
   if (message.id === "payment") {
     paymentStatus = "payment page";
+    document.querySelector('#address').style.display = 'initial';
     document.querySelector('#credit-card').style.display = 'none';
     document.querySelector('#password-icon').style.display = 'initial';
 
@@ -486,43 +646,17 @@ function renderAccounts(message) {
         document.getElementById('paygate-url').innerText = platform;
       }
     }
-    document.querySelector('#password-icon').addEventListener('click', () => {
-
-      chrome.tabs.query({ active: true, currentWindow: true })
-        .then(tabs => {
-
-          chrome.runtime.sendMessage({ id: "not a payment page", url: tabs[0].url, tabId: tabs[0].id })
-            .then(bgResponse => {
-              const p = document.querySelector('#status-text');
-              if (bgResponse.status == 'not connected') {
-                notConnected();
-              }
-            })
-            .catch(err => {
-              consoleLog('catch 32');
-              consoleLog(err);
-            })
-        })
-    })
+  } else if (message.id === "address") {
+    paymentStatus = "address page";
+    document.querySelector('#address').style.display = 'none';
+    document.querySelector('#credit-card').style.display = 'initial';
+    document.querySelector('#password-icon').style.display = 'initial';
 
   } else {
     paymentStatus = "not a payment page";
     document.querySelector('#password-icon').style.display = 'none';
+    document.querySelector('#address').style.display = 'initial';
     document.querySelector('#credit-card').style.display = 'initial';
-    document.querySelector('#credit-card').addEventListener('click', () => {
-
-      chrome.runtime.sendMessage({ id: "payment page" /*, url: tab.url, tabId: tab.id */ })
-        .then(bgResponse => {
-          const p = document.querySelector('#status-text');
-          if (bgResponse.status == 'not connected') {
-            notConnected();
-          }
-        })
-        .catch(err => {
-          consoleLog('catch 32');
-          consoleLog(err);
-        })
-    })
   }
 
   if (foundRecords.length === 0) {
@@ -581,6 +715,27 @@ function advItemClick(e) {
                 consoleLog(err);
               })
           }
+        }
+        return;
+      }
+
+      if (paymentStatus == "address page") {
+
+        for (let frame of addressFrames) {
+          chrome.tabs.sendMessage(
+            tabs[0].id,
+            {
+              id: 'address',
+              address: foundRecords[row].address,
+            },
+            { frameId: frame.frameId })
+            .then(response => {
+              windowClose();
+            })
+            .catch(err => {
+              consoleLog('catched 169');
+              consoleLog(err);
+            })
         }
         return;
       }
@@ -680,7 +835,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     notConnected();
   }
 
-  if ((request.id === "advise") || (request.id === "payment")) {
+  if ((request.id === "advise") || (request.id === "payment") || (request.id === "address")) {
     sendResponse({ response: 'Bye' })
     renderAccounts(request);
     return;

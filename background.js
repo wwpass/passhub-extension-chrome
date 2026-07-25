@@ -74,7 +74,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
         consoleLog(injectionResult);
         //        sendResponse({ id: "Ok" });
       })
-  } else if ((request.id == 'advise') || (request.id == 'payment')) {
+  } else if ((request.id == 'advise') || (request.id == 'payment') || (request.id == 'address')) {
     // sent by passhub tab as a response containing data, retransmitted to popup
 
     const originUrl = new URL(sender.origin);

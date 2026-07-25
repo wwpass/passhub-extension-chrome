@@ -1,7 +1,7 @@
 // GPL: https://github.com/passff/passff
 
-// const consoleLog = console.log;
-const consoleLog = () => { };
+const consoleLog = console.log;
+// const consoleLog = () => { };
 
 function fireEvent(el, name) {
   el.dispatchEvent(
@@ -329,6 +329,25 @@ function altCSC() {
   return element;
 }
 
+function detectAddressField() {
+  const autocompleteTokens = [
+    'address-line1', 'address-line2', 'address-line3',
+    'street-address', 'postal-code', 'country', 'country-name',
+    'address-level1', 'address-level2'
+  ];
+  const pattern = new RegExp(`^(?:(?:shipping|billing)\\s+)?(?:${autocompleteTokens.join('|')})$`, 'i');
+  const elements = document.querySelectorAll('[autocomplete]');
+
+  consoleLog("address elements found");
+  consoleLog(elements);
+  for (const element of elements) {
+    if (pattern.test(element.getAttribute('autocomplete').trim())) {
+      return element;
+    }
+  }
+  return null;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   consoleLog(message);
   consoleLog(sender.tab ?
@@ -356,6 +375,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
+  if (message.id === "address") {
+    fillAddressData(message.address);
+    sendResponse({ farewell: "Ok" });
+    return;
+  }
+
+
   if (message.id === "payment status") {
     let ccNumber = document.querySelector('[autocomplete="cc-number"]');
 
@@ -375,6 +401,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const ccCSC = document.querySelector('[autocomplete="cc-csc"]');
 
     const paymentStatus = { payment: ((ccNumber != null) || (ccName != null) || (ccCSC != null)) ? "payment page" : "not a payment page" }
+
+    if (paymentStatus.payment === "not a payment page" && detectAddressField()) {
+      paymentStatus.payment = "address page";
+    }
+
     consoleLog('response 1');
     consoleLog(paymentStatus);
     sendResponse(paymentStatus);
@@ -383,6 +414,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   sendResponse({ farewell: "contentScript goodbye" });
 }
 );
+
+function fillAddressData(address) {
+  let country = document.querySelector('[autocomplete="country"]');
+  if (country) {
+    setInputValue(country, address[8]);
+  }
+  let state = document.querySelector('[autocomplete="address-level1"]');
+
+  if (state) {
+    setInputValue(state, address[6]);
+  }
+
+  let zip = document.querySelector('[autocomplete="postal-code"]');
+  if (zip) {
+    setInputValue(zip, address[7]);
+  }
+  let city = document.querySelector('[autocomplete="address-level2"]');
+  if (city) {
+    setInputValue(city, address[5]);
+  }
+
+  let addressLine1 = document.querySelector('[autocomplete="address-line1"]');
+  if (addressLine1) {
+    setInputValue(addressLine1, address[3]);
+  }
+  let addressLine2 = document.querySelector('[autocomplete="address-line2"]');
+  if (addressLine2) {
+    setInputValue(addressLine2, address[4]);
+  }
+
+
+}
+
 
 function fillCardData(card) {
   let cardnum = document.querySelector('[autocomplete="cc-number"]');
