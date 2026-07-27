@@ -1,7 +1,7 @@
 // GPL: https://github.com/passff/passff
 
-const consoleLog = console.log;
-// const consoleLog = () => { };
+// const consoleLog = console.log;
+const consoleLog = () => { };
 
 function fireEvent(el, name) {
   el.dispatchEvent(
@@ -443,10 +443,7 @@ function fillAddressData(address) {
   if (addressLine2) {
     setInputValue(addressLine2, address[4]);
   }
-
-
 }
-
 
 function fillCardData(card) {
   let cardnum = document.querySelector('[autocomplete="cc-number"]');
@@ -525,5 +522,18 @@ function fillCardData(card) {
   if (csc) {
     setInputValue(csc, card[7]);
   }
+
+  if (card.length > 8) {
+    let zip = document.querySelector('[autocomplete="postal-code"]');
+    /*    
+        if (!zip) {
+          zip = altZip();
+        }
+    */
+    if (zip) {
+      setInputValue(zip, card[8]);
+    }
+  }
+
 }
 

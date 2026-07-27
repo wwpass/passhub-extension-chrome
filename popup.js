@@ -333,6 +333,10 @@ function copyDivEntryClick(ev, fieldName) {
     if (fieldName == "cc-csc") {
       navigator.clipboard.writeText(card[7].trim())
     }
+    if (fieldName == "postal-code") {
+      navigator.clipboard.writeText(card[8].trim())
+    }
+
   } else if (paymentStatus == "address page") {
     const address = foundRecords[row].address;
     if (fieldName == "street-address1") {
@@ -415,6 +419,15 @@ function renderFoundEntry(entryData, row) {
       copyDivEntryClick(ev, 'cc-exp');
     })
     copyDialog.append(copyCcExp);
+
+
+    const copyZip = document.createElement('div');
+    copyZip.innerHTML = '<span>Copy Zip / postal-code</span>';
+
+    copyZip.addEventListener('click', (ev) => {
+      copyDivEntryClick(ev, 'postal-code');
+    })
+    copyDialog.append(copyZip);
 
   } else if (paymentStatus == "address page") {
 
