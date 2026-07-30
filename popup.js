@@ -1,12 +1,11 @@
 
-const consoleLog = () => { };
+//const consoleLog = () => { };
 const windowClose = window.close;
 
-/*
-// Debug mode:
+
 const consoleLog = console.log;
-const windowClose = () => { consoleLog('xxx') };
-*/
+//const windowClose = () => { consoleLog('xxx') };
+
 
 let activeTab = null;
 
@@ -71,20 +70,24 @@ function gotPaymentStatus(tab, frame, response) {
 
   consoleLog("gotPaymentStatus");
   consoleLog(response);
-  if (response.payment == "payment page") {
-    paymentStatus = response.payment;
+
+  if (response == "payment page") {
+    paymentStatus = response;
     paymentFrames.push(frame);
-  }
 
-  if (response.payment == "address page") {
-
-    paymentStatus = response.payment;
+  } else if (response == "address page") {
+    paymentStatus = response;
     addressFrames.push(frame);
-    consoleLog("Hello 1");
     consoleLog(addressFrames);
+
+  } else if (response == "payment and address page") {
+    addressFrames.push(frame);
+    paymentFrames.push(frame);
+    consoleLog(paymentFrames);
+    paymentStatus = "payment page";   // card priority
   }
 
-  if (response.payment == "not valid frame") {
+  if (response == "not valid frame") {
     validFramesRemove(frame);
   } else {
     frameResponded++;
@@ -130,10 +133,14 @@ function gotPaymentStatus(tab, frame, response) {
     }
 
     let message2backgroundId = "not a payment page";
+
     if (paymentHost) {
       message2backgroundId = "payment page"
     }
-    if (addressFrames.length) {
+
+    if (paymentFrames.length) {
+      message2backgroundId = "payment page"
+    } else if (addressFrames.length) {
       message2backgroundId = "address page"
     }
 
@@ -212,7 +219,7 @@ function installScript(tab, frame) {
             .catch(err => {
               consoleLog(`catch70 frame: ${frame.frameId} ${frame.url}`);
               consoleLog(err);
-              gotPaymentStatus(tab, frame, { payment: "not valid frame" });
+              gotPaymentStatus(tab, frame, "not valid frame");
             })
         })
         .catch(err => {
@@ -733,7 +740,6 @@ function advItemClick(e) {
       }
 
       if (paymentStatus == "address page") {
-
         for (let frame of addressFrames) {
           chrome.tabs.sendMessage(
             tabs[0].id,

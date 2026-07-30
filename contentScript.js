@@ -329,7 +329,7 @@ function altCSC() {
   return element;
 }
 
-function detectAddressField() {
+function addressFieldsPresent() {
   const autocompleteTokens = [
     'address-line1', 'address-line2', 'address-line3',
     'street-address', 'postal-code', 'country', 'country-name',
@@ -348,6 +348,17 @@ function detectAddressField() {
   return null;
 }
 
+function cardFieldsPresent() {
+
+  let ccNumber = document.querySelector('[autocomplete="cc-number"]');
+  if (!ccNumber) {
+    ccNumber = altCardnum();
+  }
+  const ccName = document.querySelector('[autocomplete="cc-name"]');
+  const ccCSC = document.querySelector('[autocomplete="cc-csc"]');
+  return (ccNumber != null) || (ccName != null) || (ccCSC != null);
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   consoleLog(message);
   consoleLog(sender.tab ?
@@ -357,14 +368,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     initFillCredentials();
 
     fillCredentials(message);
-
-    /*    
-        intervalID = setInterval(() => {
-          fillCredentials(message);
-          consoleLog(`fillCounter ${fillCounter}`)
-        },
-          100);
-    */
     sendResponse({ farewell: "Ok" });
     return;
   }
@@ -381,29 +384,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
-
   if (message.id === "payment status") {
-    let ccNumber = document.querySelector('[autocomplete="cc-number"]');
 
-    if (!ccNumber) {
-      ccNumber = altCardnum();
-    }
-    /*
-        if (ccNumber) {
-          const paymentStatus = { payment: "payment page" }
-          consoleLog('response 2');
-          consoleLog(paymentStatus);
-          sendResponse(paymentStatus);
-        }
-    */
+    const cardDetected = cardFieldsPresent();
+    const addressDetected = addressFieldsPresent();
 
-    const ccName = document.querySelector('[autocomplete="cc-name"]');
-    const ccCSC = document.querySelector('[autocomplete="cc-csc"]');
+    let paymentStatus = "not a payment page";
 
-    const paymentStatus = { payment: ((ccNumber != null) || (ccName != null) || (ccCSC != null)) ? "payment page" : "not a payment page" }
-
-    if (paymentStatus.payment === "not a payment page" && detectAddressField()) {
-      paymentStatus.payment = "address page";
+    if (cardDetected && addressDetected) {
+      paymentStatus = "payment and address page";
+    } else if (cardDetected) {
+      paymentStatus = "payment page";
+    } else if (addressDetected) {
+      paymentStatus = "address page";
     }
 
     consoleLog('response 1');
@@ -415,33 +408,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 }
 );
 
+// address elements only 
+function findByAutocompleteToken(token) {
+  const pattern = new RegExp(`^(?:(?:shipping|billing)\\s+)?${token}$`, 'i');
+  return Array.from(document.querySelectorAll('[autocomplete]'))
+    .find(el => pattern.test(el.getAttribute('autocomplete').trim()));
+}
+
 function fillAddressData(address) {
-  let country = document.querySelector('[autocomplete="country"]');
+  let country = findByAutocompleteToken('country');
   if (country) {
     setInputValue(country, address[8]);
   }
-  let state = document.querySelector('[autocomplete="address-level1"]');
+  let state = findByAutocompleteToken('address-level1');
+
+  if (!state) {
+    state = findByAutocompleteToken('state');
+  }
 
   if (state) {
     setInputValue(state, address[6]);
   }
 
-  let zip = document.querySelector('[autocomplete="postal-code"]');
+  let zip = findByAutocompleteToken('postal-code');
   if (zip) {
     setInputValue(zip, address[7]);
   }
-  let city = document.querySelector('[autocomplete="address-level2"]');
+  let city = findByAutocompleteToken('address-level2');
   if (city) {
     setInputValue(city, address[5]);
   }
 
-  let addressLine1 = document.querySelector('[autocomplete="address-line1"]');
-  if (addressLine1) {
-    setInputValue(addressLine1, address[3]);
-  }
-  let addressLine2 = document.querySelector('[autocomplete="address-line2"]');
-  if (addressLine2) {
-    setInputValue(addressLine2, address[4]);
+
+  let streetAddress = findByAutocompleteToken('street-address');
+  if (streetAddress) {
+    setInputValue(streetAddress, `${address[3]} ${address[4]}`);
+  } else {
+    let addressLine1 = findByAutocompleteToken('address-line1');
+    if (addressLine1) {
+      setInputValue(addressLine1, address[3]);
+    }
+    let addressLine2 = findByAutocompleteToken('address-line2');
+    if (addressLine2) {
+      setInputValue(addressLine2, address[4]);
+    }
   }
 }
 
@@ -524,8 +534,8 @@ function fillCardData(card) {
   }
 
   if (card.length > 8) {
-    let zip = document.querySelector('[autocomplete="postal-code"]');
-    /*    
+    let zip = findByAutocompleteToken('postal-code');
+    /*
         if (!zip) {
           zip = altZip();
         }
@@ -536,4 +546,6 @@ function fillCardData(card) {
   }
 
 }
-
+/*
+const pattern = new RegExp(`^(?:(?:shipping|billing)\\s+)?(?:${autocompleteTokens.join('|')})$`, 'i');
+*/

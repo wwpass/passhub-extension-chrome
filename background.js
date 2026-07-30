@@ -18,6 +18,11 @@ consoleLog(logtime() + 'passhub extension background start');
 chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
   consoleLog(`external message from passhub window/ request from ${sender.url}`);
   consoleLog(request);
+  if (!request) {
+    consoleLog("no request");
+    return;
+  }
+
 
   if (request.id == 'clear to send') {
     if (!deferredMsg) {
