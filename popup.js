@@ -629,11 +629,7 @@ document.querySelector('#address').addEventListener('click', () => {
     })
 })
 
-
 /*------------------------------------------------*/
-
-
-
 
 function renderAccounts(message) {
 
@@ -684,13 +680,28 @@ function renderAccounts(message) {
     if (message.id === "payment") {
       document.getElementById("not-found-password").style.display = "none";
       document.getElementById("not-found-payment-card").style.display = "block";
+      document.getElementById("not-found-address").style.display = "none";
+    } else if (message.id === "address") {
+      document.getElementById("not-found-password").style.display = "none";
+      document.getElementById("not-found-payment-card").style.display = "none";
+      document.getElementById("not-found-address").style.display = "block";
+
     } else {
       document.getElementById("not-found-password").style.display = "block";
       document.getElementById("not-found-payment-card").style.display = "none";
+      document.getElementById("not-found-address").style.display = "none";
       const notFoundHostName = document.getElementById("not-found-hostname");
       notFoundHostName.innerText = message.hostname;
     }
     return;
+  }
+
+  if (message.id == "payment") {
+    document.getElementById("select_record").innerText = "Select a bank card:";
+  } else if (message.id == "address") {
+    document.getElementById("select_record").innerText = "Select an address:";
+  } else {
+    document.getElementById("select_record").innerText = "Select an account:";
   }
 
   const adviceListDiv = document.querySelector('#advice-list');
