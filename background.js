@@ -147,7 +147,7 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
 function injectionOnInstall() {
   const event = new Event("passhubExtInstalled");
   document.dispatchEvent(event);
-  console.log("extension installed");
+  consoleLog("extension installed");
 }
 
 chrome.runtime.onInstalled.addListener(() => {
