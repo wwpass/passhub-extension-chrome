@@ -116,6 +116,7 @@ function fillCredentials(loginData = null) {
 
   let usernameInput = null;
   let passwordInput = null;
+  let otpInput = null;
 
   const inputs = findAllInputs()
 
@@ -129,42 +130,6 @@ function fillCredentials(loginData = null) {
     intervalID = null;
     return;
   }
-
-  /*  
-  let frameId = loginData.frameId; // debug
-  
-    if (frameId != 0) {
-      consoleLog('frameId');
-      consoleLog(frameId);
-      let p = document.querySelector("#password-input");
-      consoleLog('password element');
-      consoleLog(document.querySelector("#password-input"));
-      if (p) {
-        consoleLog('password element found');
-        passwordInput = p;
-      }
-  
-      let u = document.querySelector("#userId-input");
-      consoleLog('userId element');
-      consoleLog(document.querySelector("#userId-input"));
-      if (u) {
-        consoleLog('username element found');
-        usernameInput = u;
-        //      usernameInput.value = loginData.username;
-        //      u.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'a' }));
-  
-  
-      }
-  
-      const ui = document.querySelector("#userId-input");
-      consoleLog('userId-input');
-      consoleLog(document.querySelector("#userId-input"));
-      if (ui) {
-        consoleLog('userId-input element found');
-      }
-  
-    }
-  */
 
   if (!(usernameInput && passwordInput)) {
     consoleLog('contentScript: looking for username & password inputs');
@@ -184,6 +149,7 @@ function fillCredentials(loginData = null) {
 
       if (("totp" in loginData) && isTotpCandidate(input)) {
         setInputValue(input, loginData.totp);
+        otpInput = input;
         return;
       }
 
@@ -215,6 +181,19 @@ function fillCredentials(loginData = null) {
 
     clearInterval(intervalID);
     intervalID = null;
+
+    if (!otpInput && ("totp" in loginData)) {
+      for (let input of inputs) {
+        if ((input != usernameInput) && (input != passwordInput)) {
+          if (isTotpCandidate(input)) {
+            setInputValue(input, loginData.totp);
+            otpInput = input;
+            break;
+          }
+        }
+      }
+    }
+
     return;
   }
   if (passwordInput) {
@@ -223,6 +202,18 @@ function fillCredentials(loginData = null) {
 
     clearInterval(intervalID);
     intervalID = null;
+
+    if (!otpInput && ("totp" in loginData)) {
+      for (let input of inputs) {
+        if ((input != passwordInput)) {
+          if (isTotpCandidate(input)) {
+            setInputValue(input, loginData.totp);
+            otpInput = input;
+            break;
+          }
+        }
+      }
+    }
     return;
   }
 
