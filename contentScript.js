@@ -508,11 +508,11 @@ function fillCardData(card) {
       }
     }
     if (year) {
-      let twoDigitYear = card[6];
-      if (card[6].length > 2) {
-        twoDigitYear = card[6]
+      let yearValue = card[6];
+      if (digits === 2 && card[6].length > 2) {
+        yearValue = card[6].slice(-2); // Get last two characters
       }
-      setInputValue(year, card[6]);
+      setInputValue(year, yearValue);
     }
   }
 
