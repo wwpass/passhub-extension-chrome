@@ -1,9 +1,9 @@
 
-//const consoleLog = () => { };
+const consoleLog = () => { };
 const windowClose = window.close;
 
 
-const consoleLog = console.log;
+// const consoleLog = console.log;
 //const windowClose = () => { consoleLog('xxx') };
 
 
@@ -40,29 +40,11 @@ function notConnected() {
       } else {
         currentServer = data;
       }
-      //      document.getElementById('url').value = currentServer.passhubHost;
-      //      document.getElementById('current-server').innerText = currentServer.passhubHost;
       let passhubHost = currentServer.passhubHost.toLowerCase();
 
       document.getElementById('server-name-element').style.display = 'none';
       document.getElementById('login-to-passhub-link').innerText = passhubHost;
-
       document.querySelector('#passhub-link').onclick = () => { activatePassHubTab(passhubHost) };
-
-
-
-      /*
-      if (passhubHost == "passhub.net") {
-        document.getElementById('server-name-element').style.display = 'none';
-      } else {
-        document.getElementById('server-name-element').innerText = passhubHost;
-        document.getElementById('login-to-passhub-link').innerText = passhubHost;
-
-        document.getElementById('server-name-element').style.display = 'initial';
-        document.querySelector('#passhub-link').onclick = () => { activatePassHubTab(passhubHost) };
-      }
-        */
-
     })
 }
 
