@@ -18,6 +18,11 @@ consoleLog(logtime() + 'passhub extension background start');
 chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
   consoleLog(`external message from passhub window/ request from ${sender.url}`);
   consoleLog(request);
+  if (!request) {
+    consoleLog("no request");
+    return;
+  }
+
 
   if (request.id == 'clear to send') {
     if (!deferredMsg) {
@@ -74,7 +79,7 @@ chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => 
         consoleLog(injectionResult);
         //        sendResponse({ id: "Ok" });
       })
-  } else if ((request.id == 'advise') || (request.id == 'payment')) {
+  } else if ((request.id == 'advise') || (request.id == 'payment') || (request.id == 'address')) {
     // sent by passhub tab as a response containing data, retransmitted to popup
 
     const originUrl = new URL(sender.origin);
@@ -142,7 +147,7 @@ chrome.runtime.onMessage.addListener((popupMessage, sender, sendResponse) => {
 function injectionOnInstall() {
   const event = new Event("passhubExtInstalled");
   document.dispatchEvent(event);
-  console.log("extension installed");
+  consoleLog("extension installed");
 }
 
 chrome.runtime.onInstalled.addListener(() => {
