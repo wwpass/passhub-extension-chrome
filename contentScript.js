@@ -38,7 +38,6 @@ function initFillCredentials() {
   intervalID = null;
 }
 
-
 function isTotpCandidate(input) {
   const autocomplete = input.getAttribute('autocomplete');
   if (autocomplete === "one-time-code") {
@@ -54,6 +53,10 @@ function isTotpCandidate(input) {
 function isUsernameCandidate(input) {
 
   if (isTotpCandidate(input)) {
+    return false;
+  }
+
+  if (isPasswordCandidate(input)) {
     return false;
   }
 
@@ -76,6 +79,35 @@ function isUsernameCandidate(input) {
   }
 
   return true;
+}
+
+function isPasswordCandidate(input) {
+  const autocomplete = input.getAttribute('autocomplete');
+  if (autocomplete === "new-password" || autocomplete === "current-password") {
+    return true;
+  }
+
+  if (input.labels) {
+    for (const label of input.labels) {
+      if (label.textContent.toLowerCase().search("password") != -1) {
+        return true;
+      }
+    }
+  }
+
+  if (input.placeholder && input.placeholder.toLowerCase() === "password") {
+    return true;
+  }
+
+  if (input.type === "password") {
+    return true;
+  }
+
+  if ("id" in input && input.id == "password") {
+    return true;
+  }
+
+  return false;
 }
 
 function findAllInputs() {
@@ -160,11 +192,7 @@ function fillCredentials(loginData = null) {
         }
       }
 
-      if ("id" in input && input.id == "password") {
-        passwordInput = input;
-      }
-
-      if (itype === 'password') {
+      if (isPasswordCandidate(input)) {
         passwordInput = input;
       }
 
